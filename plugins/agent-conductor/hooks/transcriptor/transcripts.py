@@ -1,5 +1,15 @@
-#!/usr/bin/env -S uv run python
-"""Browse scrubbed Cursor hook transcripts by conversation_id."""
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.9"
+# dependencies = []
+# ///
+"""Browse scrubbed Cursor hook transcripts by conversation_id.
+
+Standard-library only, so it runs under any python3 without a package
+manager. The PEP 723 metadata block above declares zero dependencies, so
+`uv run` (or any PEP 723 runner) still works, but is not required — the
+plain `python3` shebang avoids dying in sandboxes that lack uv.
+"""
 
 from __future__ import annotations
 

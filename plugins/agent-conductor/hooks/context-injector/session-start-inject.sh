@@ -48,9 +48,6 @@ if ((${#SEEDED[@]} > 0)); then
   debug_log "session-start-inject.sh:seed" "boilerplate files seeded" "$(printf '%s\n' "${SEEDED[@]}" | jq -R . | jq -s -c '{seeded: .}')"
 fi
 
-UV_MSG="When needing python scripts. Use uv run only."
-CONTEXT="$UV_MSG"
-
-OUTPUT=$(jq -nc --arg ctx "$CONTEXT" '{additional_context: $ctx}')
-debug_log "session-start-inject.sh:exit" "sessionStart output" "$(echo "$OUTPUT" | jq -c '{has_additional_context: (.additional_context != null), context_len: ((.additional_context // "") | length), preview: ((.additional_context // "") | .[0:60])}')"
+OUTPUT='{}'
+debug_log "session-start-inject.sh:exit" "sessionStart output" "$OUTPUT"
 echo "$OUTPUT"

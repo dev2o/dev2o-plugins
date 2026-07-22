@@ -9,7 +9,7 @@ The transcript is not injected. Review it with the transcripts CLI before advisi
 CURSOR_PROJECT_DIR="{{PROJECT_DIR}}" {{TRANSCRIPTS_CLI}} show {{CONVERSATION_ID}} --offset -20
 ```
 
-Run this command exactly as written: keep the `CURSOR_PROJECT_DIR` prefix (transcripts live in the project, the CLI lives in the plugin cache), and run it with `required_permissions: ["all"]` — it is a `uv run` script whose cache may sit outside the sandbox's allowed paths, so the default sandbox fails with "Permission denied (os error 13)".
+Run this command exactly as written: keep the `CURSOR_PROJECT_DIR` prefix (transcripts live in the project, the CLI lives in the plugin cache), and run it with `required_permissions: ["all"]` — the CLI lives in the plugin cache, which may sit outside the sandbox's allowed paths, so the default sandbox can fail with "Permission denied (os error 13)".
 
 Page backward with larger negative offsets (`--offset -40`, ...), widen with `--full`, or narrow with `--only user,assistant`. Run the CLI bare (same prefix) for usage.
 

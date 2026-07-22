@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -59,7 +60,7 @@ def _cli(project_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["CURSOR_PROJECT_DIR"] = str(project_root)
     return subprocess.run(
-        ["uv", "run", "python", str(TRANSCRIPTS_PY), *args],
+        [sys.executable, str(TRANSCRIPTS_PY), *args],
         cwd=str(REPO_ROOT),
         text=True,
         capture_output=True,

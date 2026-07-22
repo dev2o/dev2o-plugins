@@ -25,7 +25,7 @@ hooks/
 
 | Hook event | Script | Audience | Injects |
 |------------|--------|----------|---------|
-| `sessionStart` | `session-start-inject.sh` | Main agent | `uv run` guidance |
+| `sessionStart` | `session-start-inject.sh` | Main agent | Nothing injected — seeds boilerplate files only |
 | `beforeSubmitPrompt` | `main-agent-orchestrator-inject.sh` | Main agent (IDE + CLI) | Grounding rules from `config/__agent-main.md` |
 | `subagentStart` | `subagent-context-inject.sh` | Subagent | Optional file from `config/agent-{type}.md` (additional_context; not reliably delivered) |
 | `preToolUse` (Task) | `subagent-context-pre-tool-use.sh` | Subagent | Prepends substituted context to Task `prompt` via `updated_input` |
@@ -38,7 +38,6 @@ hooks/
 |---|-----|-------------------------------|
 | Detect | `composer_mode: "agent"` | `composer_mode` is null/empty |
 | Grounding rules | Every user message (`beforeSubmitPrompt`) | Every user message (`beforeSubmitPrompt`) |
-| `uv run` note | Session start | Session start |
 
 ## Injection size limit (main agent)
 
