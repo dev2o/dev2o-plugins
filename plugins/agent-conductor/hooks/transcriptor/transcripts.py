@@ -32,10 +32,22 @@ TOOL_INPUT_PREVIEW = 100
 
 
 def project_root() -> Path:
+    """Project root containing .cursor/chat-transcripts/.
+
+    Transcripts are project-scoped data, but this script lives in the plugin
+    cache, so __file__ is useless for locating them. Resolution order:
+    1. CURSOR_PROJECT_DIR (hooks set it; the injected advisor command sets it)
+    2. Walk up from cwd looking for .cursor/chat-transcripts/
+    3. cwd itself (so error messages point at a sane location)
+    """
     env = os.environ.get("CURSOR_PROJECT_DIR")
     if env:
         return Path(env).resolve()
-    return Path(__file__).resolve().parents[2]
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, *cwd.parents):
+        if (candidate / ".cursor" / "chat-transcripts").is_dir():
+            return candidate
+    return cwd
 
 
 def transcript_dir(root: Path | None = None) -> Path:

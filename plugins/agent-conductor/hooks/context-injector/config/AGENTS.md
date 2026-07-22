@@ -24,15 +24,21 @@ A project can override any config file by placing it at `.cursor/dev2o-agent-con
 
 ## Transcript tokens (opt-in)
 
-Context files may include a placeholder that the hook substitutes at spawn time:
+Context files may include placeholders that the hook substitutes at spawn time:
 
 | Token | Replaced with |
 |-------|----------------|
 | `{{CONVERSATION_ID}}` | Parent conversation id (prefers an id with a matching `.cursor/chat-transcripts/*.jsonl`) |
+| `{{TRANSCRIPTS_CLI}}` | Absolute path to the plugin's `transcripts.py` in the plugins cache (resolved at runtime) |
+| `{{PROJECT_DIR}}` | Absolute project root (`CURSOR_PROJECT_DIR`, falling back to the hook's working directory) |
 
-**Lazy evaluation:** substitution runs only when a context file contains the token. Subagents without a context file, or with static-only context, incur zero overhead.
+**Why `{{TRANSCRIPTS_CLI}}`:** the transcript data lives in the *project* (`.cursor/chat-transcripts/`) but the CLI ships in the *plugin* cache, whose absolute location is not knowable ahead of time. Hardcoding a path (e.g. `.cursor/transcriptor/transcripts.py`) points at a script that does not exist and derails the subagent. Always use the token so the injected command is runnable as-is.
 
-If no conversation id is available, the token is replaced with `(conversation id unavailable)`. Transcripts themselves are never injected — subagents read them via the transcripts CLI (`transcriptor/transcripts.py`).
+**Why the `CURSOR_PROJECT_DIR="{{PROJECT_DIR}}"` prefix:** the CLI resolves the transcript directory from `CURSOR_PROJECT_DIR`. Subagent shells don't inherit it, and without it the CLI would look near the plugin cache and report "No transcripts found". Baking the resolved project dir into the injected command makes it work from any cwd. The CLI is also a `uv run` (PEP-723) script — its cache may live outside sandbox-allowed paths, so agents must run it with `required_permissions: ["all"]`.
+
+**Lazy evaluation:** substitution runs only when a context file contains a token. Subagents without a context file, or with static-only context, incur zero overhead.
+
+If no conversation id is available, `{{CONVERSATION_ID}}` is replaced with `(conversation id unavailable)`. Transcripts themselves are never injected — subagents read them via the substituted `{{TRANSCRIPTS_CLI}}` command.
 
 ### Example (`agent-advisor.md`)
 
@@ -41,7 +47,7 @@ Advisor is read-only; it reviews the transcript itself via the transcripts CLI:
 ```markdown
 Parent conversation id: `{{CONVERSATION_ID}}`
 
-Review it: .cursor/transcriptor/transcripts.py show {{CONVERSATION_ID}} --offset -20
+Review it: CURSOR_PROJECT_DIR="{{PROJECT_DIR}}" {{TRANSCRIPTS_CLI}} show {{CONVERSATION_ID}} --offset -20
 ```
 
 ## Example (`agent-explore.md`)

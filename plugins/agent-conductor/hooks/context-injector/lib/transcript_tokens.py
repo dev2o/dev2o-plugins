@@ -1,13 +1,37 @@
 #!/usr/bin/env python3
-"""Substitute {{CONVERSATION_ID}} in subagent context templates."""
+"""Substitute transcript tokens in subagent context templates."""
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 TOKEN_CONVERSATION_ID = "{{CONVERSATION_ID}}"
+TOKEN_TRANSCRIPTS_CLI = "{{TRANSCRIPTS_CLI}}"
+TOKEN_PROJECT_DIR = "{{PROJECT_DIR}}"
 ID_UNAVAILABLE = "(conversation id unavailable)"
+
+
+def resolve_transcripts_cli() -> str:
+    """Absolute path to the plugin's transcripts CLI in the plugins cache.
+
+    This file lives at hooks/context-injector/lib/transcript_tokens.py, so the
+    CLI is hooks/transcriptor/transcripts.py (two levels up from lib/).
+    """
+    return str(Path(__file__).resolve().parents[2] / "transcriptor" / "transcripts.py")
+
+
+def resolve_project_dir() -> str:
+    """Absolute project root holding .cursor/chat-transcripts/.
+
+    Hooks run with CURSOR_PROJECT_DIR set; fall back to the working directory
+    (never to the plugin cache — transcripts are project-scoped data).
+    """
+    env = os.environ.get("CURSOR_PROJECT_DIR")
+    if env:
+        return str(Path(env).resolve())
+    return str(Path.cwd().resolve())
 
 
 def resolve_conversation_id(
@@ -16,7 +40,7 @@ def resolve_conversation_id(
     session_id: str = "",
 ) -> str:
     candidates = [c for c in (conversation_id, fallback_conversation_id, session_id) if c]
-    chat_dir = Path(__file__).resolve().parents[3] / ".cursor" / "chat-transcripts"
+    chat_dir = Path(resolve_project_dir()) / ".cursor" / "chat-transcripts"
     for cid in candidates:
         if (chat_dir / f"{cid}.jsonl").is_file():
             return cid
@@ -29,12 +53,16 @@ def substitute_tokens(
     fallback_conversation_id: str = "",
     session_id: str = "",
 ) -> str:
-    if TOKEN_CONVERSATION_ID not in context:
-        return context
-    return context.replace(
-        TOKEN_CONVERSATION_ID,
-        resolve_conversation_id(conversation_id, fallback_conversation_id, session_id),
-    )
+    if TOKEN_TRANSCRIPTS_CLI in context:
+        context = context.replace(TOKEN_TRANSCRIPTS_CLI, resolve_transcripts_cli())
+    if TOKEN_PROJECT_DIR in context:
+        context = context.replace(TOKEN_PROJECT_DIR, resolve_project_dir())
+    if TOKEN_CONVERSATION_ID in context:
+        context = context.replace(
+            TOKEN_CONVERSATION_ID,
+            resolve_conversation_id(conversation_id, fallback_conversation_id, session_id),
+        )
+    return context
 
 
 def main() -> int:
