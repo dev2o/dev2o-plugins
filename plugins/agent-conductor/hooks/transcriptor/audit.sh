@@ -19,6 +19,28 @@ fi
 
 timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 mkdir -p "$LOG_DIR"
-echo "$json_input" | jq -c --arg ts "$timestamp" -f "$SCRUB_JQ" >> "$LOG_DIR/${conversation_id}.jsonl"
+LOG_FILE="$LOG_DIR/${conversation_id}.jsonl"
+
+# Cursor fires afterAgentThought twice per thought: once with the parent
+# generation_id and once with a per-block suffixed id (…-0-abcd), with
+# identical text. Skip the event if the previous line already captured the
+# same thought.
+hook_event=$(echo "$json_input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)
+if [[ "$hook_event" == "afterAgentThought" && -f "$LOG_FILE" ]]; then
+  prev_line=$(tail -n 1 "$LOG_FILE" 2>/dev/null || true)
+  if [[ -n "$prev_line" ]]; then
+    is_dup=$(jq -n -c \
+      --argjson prev "$prev_line" \
+      --argjson cur "$json_input" \
+      '($prev.hook_event_name == "afterAgentThought")
+       and ($prev.text == $cur.text)
+       and ($prev.duration_ms == $cur.duration_ms)' 2>/dev/null || echo false)
+    if [[ "$is_dup" == "true" ]]; then
+      exit 0
+    fi
+  fi
+fi
+
+echo "$json_input" | jq -c --arg ts "$timestamp" -f "$SCRUB_JQ" >> "$LOG_FILE"
 
 exit 0
