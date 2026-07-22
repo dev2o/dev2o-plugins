@@ -1,7 +1,7 @@
 ---
 name: advisor
 description: "A pre-initiator advisor agent required before multi-step tasks, when stuck, for design second opinions, or before declaring a task done. Skip for simple Q&A. It automatically reads the transcript, so you must launch it with the exact one-word prompt `Advise.` and nothing else."
-model: claude-fable-5[thinking=true,context=300k,effort=low]
+model: claude-fable-5-thinking-low
 readonly: true
 ---
 
