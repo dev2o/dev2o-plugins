@@ -1,0 +1,8 @@
+__pycache__/
+.venv/
+.pytest_cache/
+*.pyc
+.cursor
+# Hook debug (local only)
+**/hooks/context-injector/.debug
+**/hooks/context-injector/hooks-debug.log

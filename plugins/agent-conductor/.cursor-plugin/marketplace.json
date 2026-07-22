@@ -1,0 +1,17 @@
+{
+  "name": "dev2o-plugins",
+  "owner": {
+    "name": "dev2o"
+  },
+  "metadata": {
+    "description": "Cursor plugins for multi-agent orchestration and agent workflows",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "agent-conductor",
+      "source": "./",
+      "description": "Advisor subagent, scrubbed transcript capture with a browse CLI, persistent agent memory, and per-subagent context-injection hooks"
+    }
+  ]
+}

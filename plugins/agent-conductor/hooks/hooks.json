@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "./hooks/context-injector/session-start-inject.sh"
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "./hooks/context-injector/subagent-context-pre-tool-use.sh",
+        "matcher": "Task"
+      },
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "./hooks/context-injector/subagent-context-inject.sh"
+      },
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "./hooks/context-injector/main-agent-orchestrator-inject.sh"
+      },
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "preCompact": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "afterAgentThought": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": "./hooks/context-injector/stop-debug-log.sh"
+      },
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "conversation_id": "663268e0-f424-494a-a543-3de2743795b5",
+  "model": "composer-2.5",
+  "content": "FULL FILE BODY SHOULD NOT APPEAR IN OUTPUT",
+  "file_path": "/workspaces/example-project/.cursor/skills/agent-browser/SKILL.md",
+  "hook_event_name": "beforeReadFile",
+  "user_email": "user@example.com",
+  "session_id": "663268e0-f424-494a-a543-3de2743795b5",
+  "workspace_roots": ["/workspaces/example-project"],
+  "transcript_path": null,
+  "future_field": 1
+}

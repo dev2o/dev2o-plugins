@@ -1,0 +1,11 @@
+{
+  "conversation_id": "bc-d15b22ad-3ef4-44fe-b0e4-213894ba53de",
+  "generation_id": "a1c82139-285c-47af-87d8-1f3bdee288ee",
+  "model": "composer-2.5",
+  "prompt": "can you run some read write test?  No need to create a new branch for this.",
+  "hook_event_name": "beforeSubmitPrompt",
+  "user_email": null,
+  "session_id": "bc-d15b22ad-3ef4-44fe-b0e4-213894ba53de",
+  "workspace_roots": ["/workspaces/example-project"],
+  "transcript_path": null
+}

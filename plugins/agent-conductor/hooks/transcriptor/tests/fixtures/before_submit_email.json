@@ -1,0 +1,11 @@
+{
+  "conversation_id": "663268e0-f424-494a-a543-3de2743795b5",
+  "generation_id": "03e026da-f2be-4437-b501-c09f65b68288",
+  "model": "composer-2.5",
+  "prompt": "ls in the command line will give you create and modify datetimes?",
+  "hook_event_name": "beforeSubmitPrompt",
+  "user_email": "user@example.com",
+  "session_id": "663268e0-f424-494a-a543-3de2743795b5",
+  "workspace_roots": ["/workspaces/example-project"],
+  "transcript_path": "/tmp/transcript.jsonl"
+}
