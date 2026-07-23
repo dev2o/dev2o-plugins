@@ -76,11 +76,27 @@ def parse_ts(ts: str | None) -> datetime | None:
         return None
 
 
-def format_time(ts: str | None) -> str:
+def local_dt(ts: str | None) -> datetime | None:
     dt = parse_ts(ts)
+    if not dt:
+        return None
+    if dt.tzinfo is not None:
+        return dt.astimezone()
+    return dt
+
+
+def format_time(ts: str | None) -> str:
+    dt = local_dt(ts)
     if not dt:
         return "??:??:??"
     return dt.strftime("%H:%M:%S")
+
+
+def format_ts(ts: str | None) -> str:
+    dt = local_dt(ts)
+    if not dt:
+        return "?"
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def truncate(text: str, limit: int) -> str:
@@ -263,7 +279,7 @@ def print_list(summaries: list[dict]) -> None:
         rows.append(
             (
                 s["conversation_id"],
-                s["start_ts"] or "?",
+                format_ts(s["start_ts"]),
                 s["user_prefix"] or "-",
                 str(s["event_count"]),
                 truncate(s["snippet"], 60),
