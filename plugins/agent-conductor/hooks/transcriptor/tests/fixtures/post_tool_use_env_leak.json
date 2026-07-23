@@ -1,0 +1,12 @@
+{
+  "conversation_id": "34005c8e-b9dd-43bf-9a09-930a17c71735",
+  "generation_id": "d647605c-b3d2-4e20-8106-77df8183db69",
+  "model": "composer-2.5",
+  "tool_name": "Shell",
+  "tool_input": {
+    "command": "env | grep -E 'OP_|TAVILY' || true"
+  },
+  "hook_event_name": "postToolUse",
+  "tool_output": "OP_SERVICE_ACCOUNT_TOKEN=super-secret-token-abc123\nTAVILY_API_KEY=tvly-secret-key-xyz789\nPATH=/usr/bin",
+  "user_email": "richard@example.com"
+}

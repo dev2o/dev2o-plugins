@@ -6,6 +6,11 @@
         "command": "./hooks/context-injector/session-start-inject.sh"
       }
     ],
+    "beforeShellExecution": [
+      {
+        "command": "./hooks/transcriptor/shell-secrets-deny.sh"
+      }
+    ],
     "beforeReadFile": [
       {
         "command": "./hooks/transcriptor/audit.sh"
@@ -20,6 +25,10 @@
       {
         "command": "./hooks/context-injector/subagent-context-pre-tool-use.sh",
         "matcher": "Task"
+      },
+      {
+        "command": "./hooks/transcriptor/shell-secrets-deny.sh",
+        "matcher": "Shell"
       },
       {
         "command": "./hooks/transcriptor/audit.sh"
