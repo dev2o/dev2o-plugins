@@ -38,6 +38,18 @@ seed_file() {
   SEEDED+=("$dest")
 }
 
+sync_file() {
+  local src="$1" dest="$2"
+  [[ -f "$src" ]] || return 0
+  mkdir -p "$(dirname "$dest")"
+  cp -f "$src" "$dest"
+  chmod +x "$dest"
+  SEEDED+=("$dest")
+}
+
+TRANSCRIPTS_SRC="$(cd "$SCRIPT_DIR/../transcriptor" && pwd)/transcripts.py"
+sync_file "$TRANSCRIPTS_SRC" "$PROJECT_CURSOR_DIR/chat-transcripts/_transcripts.py"
+
 seed_file "$BOILERPLATE_DIR/agent-memory/orchestrator/MEMORY.md" "$PROJECT_CURSOR_DIR/agent-memory/orchestrator/MEMORY.md"
 for src in "$BOILERPLATE_DIR/chat-transcripts"/* "$BOILERPLATE_DIR/chat-transcripts"/.[!.]*; do
   [[ -f "$src" ]] || continue

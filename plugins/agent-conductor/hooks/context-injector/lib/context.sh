@@ -46,19 +46,16 @@ subagent_context() {
 }
 
 CONVERSATION_ID_TOKEN='{{CONVERSATION_ID}}'
-TRANSCRIPTS_CLI_TOKEN='{{TRANSCRIPTS_CLI}}'
 PROJECT_DIR_TOKEN='{{PROJECT_DIR}}'
 
 context_has_transcript_tokens() {
   grep -qF "$CONVERSATION_ID_TOKEN" <<< "$1" && return 0
-  grep -qF "$TRANSCRIPTS_CLI_TOKEN" <<< "$1" && return 0
   grep -qF "$PROJECT_DIR_TOKEN" <<< "$1"
 }
 
 context_transcript_tokens_used() {
   local used=()
   grep -qF "$CONVERSATION_ID_TOKEN" <<< "$1" && used+=("CONVERSATION_ID")
-  grep -qF "$TRANSCRIPTS_CLI_TOKEN" <<< "$1" && used+=("TRANSCRIPTS_CLI")
   grep -qF "$PROJECT_DIR_TOKEN" <<< "$1" && used+=("PROJECT_DIR")
   if [[ ${#used[@]} -eq 0 ]]; then
     echo '[]'

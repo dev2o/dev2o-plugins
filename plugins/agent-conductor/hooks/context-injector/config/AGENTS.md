@@ -29,16 +29,15 @@ Context files may include placeholders that the hook substitutes at spawn time:
 | Token | Replaced with |
 |-------|----------------|
 | `{{CONVERSATION_ID}}` | Parent conversation id (prefers an id with a matching `.cursor/chat-transcripts/*.jsonl`) |
-| `{{TRANSCRIPTS_CLI}}` | Absolute path to the plugin's `transcripts.py` in the plugins cache (resolved at runtime) |
 | `{{PROJECT_DIR}}` | Absolute project root (`CURSOR_PROJECT_DIR`, falling back to the hook's working directory) |
 
-**Why `{{TRANSCRIPTS_CLI}}`:** the transcript data lives in the *project* (`.cursor/chat-transcripts/`) but the CLI ships in the *plugin* cache, whose absolute location is not knowable ahead of time. Hardcoding a path (e.g. `.cursor/transcriptor/transcripts.py`) points at a script that does not exist and derails the subagent. Always use the token so the injected command is runnable as-is.
+**Transcripts CLI:** synced to `.cursor/chat-transcripts/_transcripts.py` on each session start (overwrite). Subagents invoke it with a workspace-relative path — no token needed.
 
-**Why the `CURSOR_PROJECT_DIR="{{PROJECT_DIR}}"` prefix:** the CLI resolves the transcript directory from `CURSOR_PROJECT_DIR`. Subagent shells don't inherit it, and without it the CLI would look near the plugin cache and report "No transcripts found". Baking the resolved project dir into the injected command makes it work from any cwd. The CLI is a stdlib-only `python3` script (its shebang is `#!/usr/bin/env python3`, with an empty PEP-723 dependency block so `uv run` still works but is not required) — it lives in the plugin cache, which may sit outside sandbox-allowed paths, so agents must run it with `required_permissions: ["all"]`.
+**Why the `CURSOR_PROJECT_DIR="{{PROJECT_DIR}}"` prefix:** the CLI resolves the transcript directory from `CURSOR_PROJECT_DIR`. Subagent shells don't inherit it, and without it the CLI would look from the wrong cwd and report "No transcripts found". Baking the resolved project dir into the injected command makes it work from any cwd.
 
 **Lazy evaluation:** substitution runs only when a context file contains a token. Subagents without a context file, or with static-only context, incur zero overhead.
 
-If no conversation id is available, `{{CONVERSATION_ID}}` is replaced with `(conversation id unavailable)`. Transcripts themselves are never injected — subagents read them via the substituted `{{TRANSCRIPTS_CLI}}` command.
+If no conversation id is available, `{{CONVERSATION_ID}}` is replaced with `(conversation id unavailable)`. Transcripts themselves are never injected — subagents read them via the CLI command above.
 
 ### Example (`agent-advisor.md`)
 
@@ -47,7 +46,7 @@ Advisor is read-only; it reviews the transcript itself via the transcripts CLI:
 ```markdown
 Parent conversation id: `{{CONVERSATION_ID}}`
 
-Review it: CURSOR_PROJECT_DIR="{{PROJECT_DIR}}" {{TRANSCRIPTS_CLI}} show {{CONVERSATION_ID}} --offset -20
+Review it: CURSOR_PROJECT_DIR="{{PROJECT_DIR}}" .cursor/chat-transcripts/_transcripts.py show {{CONVERSATION_ID}} --offset -20
 ```
 
 ## Example (`agent-explore.md`)

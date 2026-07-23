@@ -8,18 +8,8 @@ import sys
 from pathlib import Path
 
 TOKEN_CONVERSATION_ID = "{{CONVERSATION_ID}}"
-TOKEN_TRANSCRIPTS_CLI = "{{TRANSCRIPTS_CLI}}"
 TOKEN_PROJECT_DIR = "{{PROJECT_DIR}}"
 ID_UNAVAILABLE = "(conversation id unavailable)"
-
-
-def resolve_transcripts_cli() -> str:
-    """Absolute path to the plugin's transcripts CLI in the plugins cache.
-
-    This file lives at hooks/context-injector/lib/transcript_tokens.py, so the
-    CLI is hooks/transcriptor/transcripts.py (two levels up from lib/).
-    """
-    return str(Path(__file__).resolve().parents[2] / "transcriptor" / "transcripts.py")
 
 
 def resolve_project_dir() -> str:
@@ -53,8 +43,6 @@ def substitute_tokens(
     fallback_conversation_id: str = "",
     session_id: str = "",
 ) -> str:
-    if TOKEN_TRANSCRIPTS_CLI in context:
-        context = context.replace(TOKEN_TRANSCRIPTS_CLI, resolve_transcripts_cli())
     if TOKEN_PROJECT_DIR in context:
         context = context.replace(TOKEN_PROJECT_DIR, resolve_project_dir())
     if TOKEN_CONVERSATION_ID in context:

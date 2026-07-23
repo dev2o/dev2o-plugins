@@ -30,12 +30,9 @@ def test_conversation_id_substituted() -> None:
     assert "{{CONVERSATION_ID}}" not in out
 
 
-def test_transcripts_cli_substituted() -> None:
+def test_transcripts_cli_path_in_context() -> None:
     out = _build_context(REAL_ID)
-    # Token must be replaced with the plugin's real, absolute CLI path.
-    assert "{{TRANSCRIPTS_CLI}}" not in out
-    expected = str(REPO_ROOT / "hooks" / "transcriptor" / "transcripts.py")
-    assert expected in out
+    assert ".cursor/chat-transcripts/_transcripts.py" in out
 
 
 def test_project_dir_substituted() -> None:

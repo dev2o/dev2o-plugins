@@ -1,0 +1,9 @@
+{
+  "conversation_id": "663268e0-f424-494a-a543-3de2743795b5",
+  "command": "cat huge-file.txt",
+  "output": "LINE1\nLINE2\nLINE3",
+  "duration": 42,
+  "sandbox": true,
+  "hook_event_name": "afterShellExecution",
+  "user_email": "user@example.com"
+}

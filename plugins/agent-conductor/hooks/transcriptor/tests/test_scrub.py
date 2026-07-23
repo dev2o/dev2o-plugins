@@ -103,3 +103,20 @@ def test_audit_after_agent_response_redacts_secrets(tmp_path: Path) -> None:
     assert "sk-live-abc123def456" not in row["text"]
     assert "[REDACTED]" in row["text"]
 
+
+def test_audit_after_shell_execution_drops_output(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "after_shell_execution.json").read_text())
+    _run_audit(tmp_path, payload)
+    row = _read_jsonl(tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl")[0]
+    assert row["output"] == "[OMITTED: Shell output dropped to prevent audit log bloat]"
+    assert row["command"] == "cat huge-file.txt"
+
+
+def test_audit_after_file_edit_drops_edit_bodies(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "after_file_edit.json").read_text())
+    _run_audit(tmp_path, payload)
+    row = _read_jsonl(tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl")[0]
+    assert row["file_path"].endswith("foo.ts")
+    assert "old_string" not in row["edits"][0]
+    assert "new_string" not in row["edits"][0]
+
