@@ -9,6 +9,14 @@
     "beforeShellExecution": [
       {
         "command": "./hooks/transcriptor/shell-secrets-deny.sh"
+      },
+      {
+        "command": "./hooks/transcriptor/audit.sh"
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": "./hooks/transcriptor/audit.sh"
       }
     ],
     "beforeReadFile": [
@@ -27,26 +35,26 @@
         "matcher": "Task"
       },
       {
-        "command": "./hooks/transcriptor/shell-secrets-deny.sh",
-        "matcher": "Shell"
-      },
-      {
-        "command": "./hooks/transcriptor/audit.sh"
+        "command": "./hooks/transcriptor/audit.sh",
+        "matcher": "Grep|Delete"
       }
     ],
     "postToolUse": [
       {
-        "command": "./hooks/transcriptor/audit.sh"
+        "command": "./hooks/transcriptor/audit.sh",
+        "matcher": "Grep|Delete"
       }
     ],
     "postToolUseFailure": [
       {
-        "command": "./hooks/transcriptor/audit.sh"
+        "command": "./hooks/transcriptor/audit.sh",
+        "matcher": "Grep|Delete"
       }
     ],
     "subagentStart": [
       {
-        "command": "./hooks/context-injector/subagent-context-inject.sh"
+        "command": "./hooks/context-injector/subagent-context-inject.sh",
+        "matcher": "advisor"
       },
       {
         "command": "./hooks/transcriptor/audit.sh"
@@ -76,14 +84,6 @@
       }
     ],
     "afterAgentThought": [
-      {
-        "command": "./hooks/transcriptor/audit.sh"
-      }
-    ],
-    "stop": [
-      {
-        "command": "./hooks/context-injector/stop-debug-log.sh"
-      },
       {
         "command": "./hooks/transcriptor/audit.sh"
       }

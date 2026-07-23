@@ -1,0 +1,12 @@
+{
+  "conversation_id": "663268e0-f424-494a-a543-3de2743795b5",
+  "file_path": "/project/src/foo.ts",
+  "edits": [
+    {
+      "old_string": "const secret = 'leaked'",
+      "new_string": "const secret = '[REDACTED]'"
+    }
+  ],
+  "hook_event_name": "afterFileEdit",
+  "user_email": "user@example.com"
+}

@@ -44,8 +44,9 @@ TOOL_INPUT_PREVIEW = 100
 def project_root() -> Path:
     """Project root containing .cursor/chat-transcripts/.
 
-    Transcripts are project-scoped data, but this script lives in the plugin
-    cache, so __file__ is useless for locating them. Resolution order:
+    Transcripts are project-scoped data. When synced to the project as
+    `.cursor/chat-transcripts/_transcripts.py`, __file__ could locate them,
+    but subagents set CURSOR_PROJECT_DIR explicitly. Resolution order:
     1. CURSOR_PROJECT_DIR (hooks set it; the injected advisor command sets it)
     2. Walk up from cwd looking for .cursor/chat-transcripts/
     3. cwd itself (so error messages point at a sane location)
