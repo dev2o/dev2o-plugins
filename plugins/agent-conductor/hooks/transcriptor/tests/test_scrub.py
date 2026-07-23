@@ -38,7 +38,7 @@ def test_audit_writes_scrubbed_jsonl(tmp_path: Path) -> None:
     assert len(rows) == 1
     row = rows[0]
     assert row["ts"]
-    assert row["user_email"] == "richard"
+    assert row["user_email"] == "user"
     assert "session_id" not in row
     assert "workspace_roots" not in row
     assert "transcript_path" not in row
@@ -79,3 +79,27 @@ def test_audit_path_traversal_conversation_id_writes_nothing(tmp_path: Path) -> 
 
 def test_scrub_jq_present() -> None:
     assert SCRUB_JQ.is_file()
+
+
+def test_audit_post_tool_use_redacts_env_values(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "post_tool_use_env_leak.json").read_text())
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "34005c8e-b9dd-43bf-9a09-930a17c71735.jsonl"
+    row = _read_jsonl(out)[0]
+    assert "super-secret-token-abc123" not in row["tool_output"]
+    assert "tvly-secret-key-xyz789" not in row["tool_output"]
+    assert "OP_SERVICE_ACCOUNT_TOKEN=[REDACTED]" in row["tool_output"]
+    assert "TAVILY_API_KEY=[REDACTED]" in row["tool_output"]
+    assert "PATH=/usr/bin" in row["tool_output"]
+
+
+def test_audit_after_agent_response_redacts_secrets(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "after_agent_response_secrets.json").read_text())
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl"
+    row = _read_jsonl(out)[0]
+    assert "leaked-in-response" not in row["text"]
+    assert "OP_SERVICE_ACCOUNT_TOKEN=[REDACTED]" in row["text"]
+    assert "sk-live-abc123def456" not in row["text"]
+    assert "[REDACTED]" in row["text"]
+
