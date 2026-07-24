@@ -1,44 +1,73 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
+DUMP_DIR="/tmp/cursor-hook-debug"
+mkdir -p "$DUMP_DIR" 2>/dev/null || true
+
+# Helper: If anything breaks, log why to /tmp and output default allow so prompt submission NEVER freezes.
+fail_open() {
+  local reason="$1"
+  echo "$(date -u): FAILED (beforeSubmitPrompt) - $reason" >> "$DUMP_DIR/error.log"
+  echo '{"continue": true}'
+  exit 0
+}
+
+# 1. Capture stdin safely and save latest payload for debugging
+INPUT=$(cat 2>/dev/null || echo "")
+if [[ -z "$INPUT" ]]; then
+  fail_open "Received empty stdin"
+fi
+echo "$INPUT" > "$DUMP_DIR/latest-beforeSubmitPrompt-payload.json"
+
+# 2. Check essential dependencies
+if ! command -v jq >/dev/null 2>&1; then
+  fail_open "'jq' is not installed in PATH: $PATH"
+fi
+
+# 3. Safely locate and source the context library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=/dev/null
-source "$SCRIPT_DIR/lib/context.sh"
+CONTEXT_LIB="$SCRIPT_DIR/lib/context.sh"
 
-MAX_INJECT_CHARS=9000
+if [[ ! -f "$CONTEXT_LIB" ]]; then
+  fail_open "Context library missing at $CONTEXT_LIB"
+fi
 
-INPUT=$(cat)
-debug_log "main-agent-orchestrator-inject.sh:entry" "beforeSubmitPrompt hook invoked" "$(echo "$INPUT" | jq -c '{composer_mode, prompt: (.prompt // ""), prompt_len: ((.prompt // "") | length)}' 2>/dev/null || echo '{"parse_error":true}')"
-COMPOSER_MODE_RAW=$(echo "$INPUT" | jq -r 'if .composer_mode == null then "" else .composer_mode // "" end')
-IS_CLI=$(is_cli_agent "$COMPOSER_MODE_RAW" && echo "true" || echo "false")
+source "$CONTEXT_LIB" 2>/dev/null || fail_open "Failed to source $CONTEXT_LIB"
+
+# 4. Safely resolve composer mode without pipefail crashes
+COMPOSER_MODE_RAW=$(printf '%s\n' "$INPUT" | jq -r 'if .composer_mode == null then "" else .composer_mode // "" end' 2>/dev/null || echo "")
 COMPOSER_MODE="${COMPOSER_MODE_RAW:-agent}"
-debug_log "main-agent-orchestrator-inject.sh:branch" "composer_mode resolved" "$(jq -nc --arg raw "$COMPOSER_MODE_RAW" --arg mode "$COMPOSER_MODE" --arg cli "$IS_CLI" '{composer_mode_raw:$raw, composer_mode:$mode, is_cli:$cli}')"
 
+# Fast exit if not in agent mode
 if [[ "$COMPOSER_MODE" != "agent" ]]; then
-  debug_log "main-agent-orchestrator-inject.sh:skip" "skipped non-agent mode" "$(jq -nc --arg mode "$COMPOSER_MODE" --arg cli "$IS_CLI" '{composer_mode:$mode, is_cli:$cli}')"
   echo '{"continue": true}'
   exit 0
 fi
 
-CONTEXT=$(orchestrator_context)
+# 5. Execute library function with existence guard
+if ! command -v orchestrator_context >/dev/null 2>&1; then
+  fail_open "Function 'orchestrator_context' not found after sourcing $CONTEXT_LIB"
+fi
+
+CONTEXT=$(orchestrator_context 2>/dev/null || echo "")
 if [[ -z "$CONTEXT" ]]; then
-  debug_log "main-agent-orchestrator-inject.sh:empty" "no grounding rules file" '{"branch":"empty_context"}'
   echo '{"continue": true}'
   exit 0
 fi
 
+# 6. Check character length and construct final JSON payload
+MAX_INJECT_CHARS=9000
 CONTEXT_LEN=${#CONTEXT}
+
 if (( CONTEXT_LEN > MAX_INJECT_CHARS )); then
-  HOOK_MSG="HOOK ISSUE:  ALERT USER THAT THE HOOK IS TRYING TO INJECT A MESSAGE ABOVE 9000 CHARS.  INJECTION ATTEMPT HAD ${CONTEXT_LEN} CHARS."
-  OUTPUT=$(jq -nc --arg msg "$HOOK_MSG" '{continue: true, additional_context: $msg}')
+  HOOK_MSG="HOOK ISSUE: ALERT USER THAT THE HOOK IS TRYING TO INJECT A MESSAGE ABOVE 9000 CHARS. INJECTION ATTEMPT HAD ${CONTEXT_LEN} CHARS."
+  if ! OUTPUT_JSON=$(jq -nc --arg msg "$HOOK_MSG" '{continue: true, additional_context: $msg}' 2>/dev/null); then
+    fail_open "Failed to construct size-warning JSON payload with jq"
+  fi
 else
-  OUTPUT=$(jq -nc --arg ctx "$CONTEXT" '{continue: true, additional_context: $ctx}')
+  if ! OUTPUT_JSON=$(jq -nc --arg ctx "$CONTEXT" '{continue: true, additional_context: $ctx}' 2>/dev/null); then
+    fail_open "Failed to construct context JSON payload with jq"
+  fi
 fi
 
-debug_log "main-agent-orchestrator-inject.sh:exit" "beforeSubmitPrompt output" "$(echo "$OUTPUT" | jq -c --arg cli "$IS_CLI" --argjson context_len "$CONTEXT_LEN" '{
-  has_additional_context: (.additional_context != null),
-  context_len: $context_len,
-  is_cli: $cli,
-  preview: ((.additional_context // .user_message // "") | .[0:60])
-}')"
-echo "$OUTPUT"
+echo "$OUTPUT_JSON"
+exit 0
