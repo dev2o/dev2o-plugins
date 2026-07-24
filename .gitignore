@@ -6,3 +6,4 @@ __pycache__/
 # Hook debug (local only)
 **/hooks/context-injector/.debug
 **/hooks/context-injector/hooks-debug.log
+node_modules
