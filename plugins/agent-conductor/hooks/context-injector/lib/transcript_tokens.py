@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Substitute transcript tokens in subagent context templates."""
+"""Substitute transcript tokens in subagent context templates safely."""
 
 from __future__ import annotations
 
@@ -10,18 +10,38 @@ from pathlib import Path
 TOKEN_CONVERSATION_ID = "{{CONVERSATION_ID}}"
 TOKEN_PROJECT_DIR = "{{PROJECT_DIR}}"
 ID_UNAVAILABLE = "(conversation id unavailable)"
+DUMP_LOG = "/tmp/cursor-hook-debug/error.log"
+
+
+def log_error(msg: str) -> None:
+    """Append non-fatal errors to the /tmp debug log without crashing."""
+    try:
+        os.makedirs("/tmp/cursor-hook-debug", exist_ok=True)
+        with open(DUMP_LOG, "a", encoding="utf-8") as f:
+            f.write(f"FAILED (transcript_tokens.py) - {msg}\n")
+    except Exception:
+        pass
 
 
 def resolve_project_dir() -> str:
     """Absolute project root holding .cursor/chat-transcripts/.
 
-    Hooks run with CURSOR_PROJECT_DIR set; fall back to the working directory
-    (never to the plugin cache — transcripts are project-scoped data).
+    Wraps path resolution in try/except to prevent permission crashes
+    in restricted container environments when cwd is inaccessible.
     """
     env = os.environ.get("CURSOR_PROJECT_DIR")
     if env:
-        return str(Path(env).resolve())
-    return str(Path.cwd().resolve())
+        try:
+            return str(Path(env).resolve())
+        except Exception as e:
+            log_error(f"Could not resolve CURSOR_PROJECT_DIR '{env}': {e}")
+            return env
+
+    try:
+        return str(Path.cwd().resolve())
+    except Exception as e:
+        log_error(f"Could not resolve current working directory: {e}")
+        return "/tmp"
 
 
 def resolve_conversation_id(
@@ -30,11 +50,22 @@ def resolve_conversation_id(
     session_id: str = "",
 ) -> str:
     candidates = [c for c in (conversation_id, fallback_conversation_id, session_id) if c]
-    chat_dir = Path(resolve_project_dir()) / ".cursor" / "chat-transcripts"
-    for cid in candidates:
-        if (chat_dir / f"{cid}.jsonl").is_file():
-            return cid
-    return candidates[0] if candidates else ID_UNAVAILABLE
+    if not candidates:
+        return ID_UNAVAILABLE
+
+    project_dir = resolve_project_dir()
+    try:
+        chat_dir = Path(project_dir) / ".cursor" / "chat-transcripts"
+        for cid in candidates:
+            # Prevent path traversal attacks if a malformed ID contains ../ or slashes
+            safe_cid = os.path.basename(cid)
+            if (chat_dir / f"{safe_cid}.jsonl").is_file():
+                return safe_cid
+    except Exception as e:
+        log_error(f"Error checking chat-transcripts directory: {e}")
+
+    # Fallback to the first non-empty candidate if files aren't found or accessible
+    return os.path.basename(candidates[0]) if candidates else ID_UNAVAILABLE
 
 
 def substitute_tokens(
@@ -46,15 +77,20 @@ def substitute_tokens(
     if TOKEN_PROJECT_DIR in context:
         context = context.replace(TOKEN_PROJECT_DIR, resolve_project_dir())
     if TOKEN_CONVERSATION_ID in context:
-        context = context.replace(
-            TOKEN_CONVERSATION_ID,
-            resolve_conversation_id(conversation_id, fallback_conversation_id, session_id),
+        resolved_id = resolve_conversation_id(
+            conversation_id, fallback_conversation_id, session_id
         )
+        context = context.replace(TOKEN_CONVERSATION_ID, resolved_id)
     return context
 
 
 def main() -> int:
-    context = sys.stdin.read()
+    try:
+        context = sys.stdin.read()
+    except Exception as e:
+        log_error(f"Failed to read stdin: {e}")
+        return 0
+
     conversation_id = ""
     fallback_conversation_id = ""
     session_id = ""
@@ -75,9 +111,16 @@ def main() -> int:
             continue
         i += 1
 
-    sys.stdout.write(
-        substitute_tokens(context, conversation_id, fallback_conversation_id, session_id)
-    )
+    try:
+        output = substitute_tokens(
+            context, conversation_id, fallback_conversation_id, session_id
+        )
+        sys.stdout.write(output)
+    except Exception as e:
+        log_error(f"Token substitution failed: {e}")
+        # Fail-open: write the unmodified context back out so the subagent doesn't freeze
+        sys.stdout.write(context)
+
     return 0
 
 
