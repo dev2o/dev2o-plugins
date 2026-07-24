@@ -6,7 +6,7 @@ Parent conversation id: `{{CONVERSATION_ID}}`
 To review the conversation history before advising, execute:
 
 ```bash
-python3 "{{PROJECT_DIR}}/.cursor/chat-transcripts/_transcripts.py" show "{{CONVERSATION_ID}}" --offset -20
+python3 ".cursor/chat-transcripts/_transcripts.py" show "{{CONVERSATION_ID}}" --offset -20
 ```
 
 Execution rules:
