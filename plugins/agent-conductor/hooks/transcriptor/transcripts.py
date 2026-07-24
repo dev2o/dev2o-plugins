@@ -9,6 +9,8 @@ Standard-library only, so it runs under any python3 without a package
 manager. The PEP 723 metadata block above declares zero dependencies, so
 `uv run` (or any PEP 723 runner) still works, but is not required — the
 plain `python3` shebang avoids dying in sandboxes that lack uv.
+
+UPDATED: 2026-07-24
 """
 
 from __future__ import annotations
@@ -39,26 +41,45 @@ EVENT_CATEGORY: dict[str, str] = {
 
 SHORT_LIMIT = 200
 TOOL_INPUT_PREVIEW = 100
+DUMP_LOG = "/tmp/cursor-hook-debug/error.log"
+
+
+def log_error(msg: str) -> None:
+    """Append non-fatal filesystem or parsing errors to debug log without crashing."""
+    try:
+        os.makedirs("/tmp/cursor-hook-debug", exist_ok=True)
+        with open(DUMP_LOG, "a", encoding="utf-8") as f:
+            f.write(f"FAILED (transcripts CLI) - {msg}\n")
+    except Exception:
+        pass
 
 
 def project_root() -> Path:
     """Project root containing .cursor/chat-transcripts/.
 
-    Transcripts are project-scoped data. When synced to the project as
-    `.cursor/chat-transcripts/_transcripts.py`, __file__ could locate them,
-    but subagents set CURSOR_PROJECT_DIR explicitly. Resolution order:
-    1. CURSOR_PROJECT_DIR (hooks set it; the injected advisor command sets it)
-    2. Walk up from cwd looking for .cursor/chat-transcripts/
-    3. cwd itself (so error messages point at a sane location)
+    Wraps path resolution in try/except to prevent permission crashes
+    in restricted container environments when parent directories are unreadable.
     """
     env = os.environ.get("CURSOR_PROJECT_DIR")
     if env:
-        return Path(env).resolve()
-    cwd = Path.cwd().resolve()
-    for candidate in (cwd, *cwd.parents):
-        if (candidate / ".cursor" / "chat-transcripts").is_dir():
-            return candidate
-    return cwd
+        try:
+            return Path(env).resolve()
+        except Exception as e:
+            log_error(f"Could not resolve CURSOR_PROJECT_DIR '{env}': {e}")
+            return Path(env)
+
+    try:
+        cwd = Path.cwd().resolve()
+        for candidate in (cwd, *cwd.parents):
+            try:
+                if (candidate / ".cursor" / "chat-transcripts").is_dir():
+                    return candidate
+            except (OSError, PermissionError):
+                continue
+        return cwd
+    except Exception as e:
+        log_error(f"Could not resolve working directory: {e}")
+        return Path("/tmp")
 
 
 def transcript_dir(root: Path | None = None) -> Path:
@@ -103,7 +124,7 @@ def format_ts(ts: str | None) -> str:
 def truncate(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
-    return text[: limit - 3] + "..."
+    return text[: max(0, limit - 3)] + "..."
 
 
 def category_for(event: dict) -> str:
@@ -112,19 +133,28 @@ def category_for(event: dict) -> str:
 
 
 def iter_events(path: Path) -> Iterator[tuple[int, dict | None]]:
-    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            yield line_no, json.loads(line)
-        except json.JSONDecodeError:
-            yield line_no, None
+    """Stream events line-by-line with encoding resilience to prevent memory bloat."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            for line_no, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    yield line_no, json.loads(line)
+                except json.JSONDecodeError:
+                    yield line_no, None
+    except (OSError, PermissionError) as e:
+        log_error(f"Failed to open or read transcript {path}: {e}")
+        return
 
 
 def compact_json(obj: object, limit: int = 200) -> str:
-    raw = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
-    return truncate(raw, limit)
+    try:
+        raw = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+        return truncate(raw, limit)
+    except (TypeError, ValueError):
+        return "[UNSERIALIZABLE_DATA]"
 
 
 def tool_summary(event: dict) -> str:
@@ -238,6 +268,12 @@ def snippet_for_events(events: list[dict]) -> str:
 
 
 def summarize_file(path: Path) -> dict | None:
+    try:
+        mtime = path.stat().st_mtime
+    except (OSError, PermissionError) as e:
+        log_error(f"Cannot stat {path}: {e}")
+        return None
+
     events, _skipped = load_transcript(path)
     if not events:
         return None
@@ -257,19 +293,27 @@ def summarize_file(path: Path) -> dict | None:
         "user_prefix": user_prefix,
         "event_count": len(events),
         "snippet": snippet_for_events(events),
-        "mtime": path.stat().st_mtime,
+        "mtime": mtime,
     }
 
 
 def collect_summaries() -> list[dict]:
     tdir = transcript_dir()
-    if not tdir.is_dir():
+    try:
+        if not tdir.is_dir():
+            return []
+    except (OSError, PermissionError):
         return []
+
     summaries = []
-    for path in tdir.glob("*.jsonl"):
-        summary = summarize_file(path)
-        if summary:
-            summaries.append(summary)
+    try:
+        for path in tdir.glob("*.jsonl"):
+            summary = summarize_file(path)
+            if summary:
+                summaries.append(summary)
+    except (OSError, PermissionError) as e:
+        log_error(f"Failed during globbing {tdir}: {e}")
+
     summaries.sort(key=lambda s: s["mtime"], reverse=True)
     return summaries
 
@@ -327,9 +371,14 @@ def cmd_guide() -> int:
 
 def cmd_show(args: argparse.Namespace) -> int:
     path = transcript_dir() / f"{args.conversation_id}.jsonl"
-    if not path.is_file():
-        print(f"No transcript: {args.conversation_id}", file=sys.stderr)
+    try:
+        if not path.is_file():
+            print(f"No transcript: {args.conversation_id}", file=sys.stderr)
+            return 1
+    except (OSError, PermissionError) as e:
+        print(f"Cannot access transcript: {args.conversation_id} ({e})", file=sys.stderr)
         return 1
+
     only = None
     if args.only:
         only = {p.strip() for p in args.only.split(",") if p.strip()}
@@ -382,18 +431,29 @@ def searchable_text(event: dict) -> str:
             parts.append(str(val))
     tool_input = event.get("tool_input")
     if tool_input:
-        parts.append(json.dumps(tool_input))
+        parts.append(compact_json(tool_input))
     return "\n".join(parts)
 
 
 def cmd_search(args: argparse.Namespace) -> int:
     tdir = transcript_dir()
-    if not tdir.is_dir():
+    try:
+        if not tdir.is_dir():
+            return 0
+    except (OSError, PermissionError):
         return 0
+
     term = args.term.lower()
     context = args.context
     matches = 0
-    for path in sorted(tdir.glob("*.jsonl")):
+    
+    try:
+        paths = sorted(tdir.glob("*.jsonl"))
+    except (OSError, PermissionError) as e:
+        log_error(f"Failed to glob search directory {tdir}: {e}")
+        return 0
+
+    for path in paths:
         events, _skipped = load_transcript(path)
         for ev in events:
             text = searchable_text(ev)
@@ -466,7 +526,20 @@ def main() -> int:
     args = parser.parse_args()
     if args.command is None:
         return cmd_guide()
-    return args.func(args)
+    try:
+        return args.func(args)
+    except BrokenPipeError:
+        # Python flushes standard streams on exit; redirect leftover output to devnull
+        # to prevent tracebacks when piping to utilities like head, grep, or pager tools.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        return 0
+    except KeyboardInterrupt:
+        return 130
+    except Exception as e:
+        log_error(f"Unhandled CLI exception: {e}")
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
