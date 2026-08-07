@@ -1,7 +1,7 @@
 ---
 name: advisor
 description: "High-tier reasoning specialist for proactive architectural and implementation guidance. Use BEFORE substantive work (writing code, editing files, or declaring final answers) and AFTER basic context orientation (reading files or gathering sources). When calling this agent, launch with the exact prompt 'Advise.' as it automatically reviews your full conversation transcript."
-model: claude-opus-5[thinking=true,context=300k,effort=high,fast=false]
+model: claude-opus-5-high
 readonly: true
 is_background: false
 ---
