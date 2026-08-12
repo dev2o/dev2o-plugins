@@ -1,8 +1,20 @@
 # Agent Context Injection
 
-Per-agent context files. `__agent-main.md` is the only system-level one: it holds the main-agent (orchestrator) grounding rules, injected at `beforeSubmitPrompt`. All other `agent-{subagent_type}.md` files are optional per-subagent prompts injected at **`subagentStart`** via `subagent-context-inject.sh`.
+Per-agent context files. `__agent-main.md` is the only system-level one: it holds the main-agent (orchestrator) grounding rules, injected at `beforeSubmitPrompt`. All other `agent-{subagent_type}.md` files are optional per-subagent prompts injected at `preToolUse` on Task via `subagent-context-pre-tool-use.sh`.
 
-When the main agent spawns a subagent (Task tool, slash command, etc.), Cursor calls `subagentStart` with a `subagent_type`. If a matching file exists here, its contents are returned as `additional_context`.
+When the main agent spawns a subagent (Task tool, slash command, etc.), the hook reads `tool_input.subagent_type`. If a matching file exists here, its contents are prepended to the Task `prompt`.
+
+## Advisor (special case)
+
+`advisor` does **not** use `agent-advisor.md`. The hook resolves `{{CONVERSATION_ID}}` with the same token logic as other context files, runs `hooks/transcriptor/transcripts.py show <id>`, and sets the Task prompt to **only**:
+
+```
+CHAT TRANSCRIPT TO ADVISE ON:
+
+<cli stdout>
+```
+
+The original Task prompt (`Advise.`) is dropped. If the id is unavailable or `show` fails, the same header is used with `(conversation id unavailable)`.
 
 ## Adding context for a subagent
 
@@ -11,12 +23,11 @@ Create `agent-{subagent_type}.md` — the part after the `agent-` prefix must ma
 ```
 config/
   __agent-main.md
-  agent-advisor.md
   agent-explore.md
   agent-{subagent_type}.md
 ```
 
-**No file → no injection** (hook returns `{ "permission": "allow" }`).
+**No file → no injection** (hook returns `{ "permission": "allow" }`), except advisor, which always rewrites the prompt.
 
 ## Project overrides
 
@@ -37,17 +48,7 @@ Context files may include placeholders that the hook substitutes at spawn time:
 
 **Lazy evaluation:** substitution runs only when a context file contains a token. Subagents without a context file, or with static-only context, incur zero overhead.
 
-If no conversation id is available, `{{CONVERSATION_ID}}` is replaced with `(conversation id unavailable)`. Transcripts themselves are never injected — subagents read them via the CLI command above.
-
-### Example (`agent-advisor.md`)
-
-Advisor is read-only; it reviews the transcript itself via the transcripts CLI:
-
-```markdown
-Parent conversation id: `{{CONVERSATION_ID}}`
-
-Review it: CURSOR_PROJECT_DIR="{{PROJECT_DIR}}" .cursor/chat-transcripts/_transcripts.py show {{CONVERSATION_ID}}
-```
+If no conversation id is available, `{{CONVERSATION_ID}}` is replaced with `(conversation id unavailable)`.
 
 ## Example (`agent-explore.md`)
 
@@ -71,6 +72,6 @@ make hooks-debug-on
 make hooks-debug-tail
 ```
 
-IDE **Execution Log** → `subagentStart` → check output for `additional_context` when a file exists. Debug log entries include `tokens_used` and `render` branch when substitution runs.
+IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for advisor, when the transcript dump is present).
 
-If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that fallback in `subagent-context-pre-tool-use.sh` — it prepends substituted context to the Task `prompt` before spawn. `subagentStart` `additional_context` is also returned but is not reliably delivered to subagents in current Cursor builds.
+If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that in `subagent-context-pre-tool-use.sh` — it prepends substituted context to the Task `prompt` before spawn (advisor: replaces the prompt with the transcript dump).
