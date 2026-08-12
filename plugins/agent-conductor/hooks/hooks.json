@@ -88,6 +88,12 @@
         "command": "${CURSOR_PLUGIN_ROOT}/hooks/transcriptor/audit.sh",
         "timeout": 30
       }
+    ],
+    "subagentStop": [
+      {
+        "command": "${CURSOR_PLUGIN_ROOT}/hooks/transcriptor/audit.sh",
+        "timeout": 30
+      }
     ]
   }
 }
