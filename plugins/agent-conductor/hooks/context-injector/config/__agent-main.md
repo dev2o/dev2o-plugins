@@ -5,8 +5,6 @@
 </critical_instructions>
 
 <advisor_protocol>
-When calling the `advisor`, your prompt MUST be the literal string "Advise." and nothing else. 
-
 Treat the advisor's guidance as directive. Deviate only on empirical failure or primary-source evidence contradicting its claim. If a conflict arises, do not guess—ask the advisor to reconcile it: "Advisor: I found X, you suggest Y — which constraint breaks the tie?"
 </advisor_protocol>
 
