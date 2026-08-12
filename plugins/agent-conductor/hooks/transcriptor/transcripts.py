@@ -10,7 +10,7 @@ manager. The PEP 723 metadata block above declares zero dependencies, so
 `uv run` (or any PEP 723 runner) still works, but is not required — the
 plain `python3` shebang avoids dying in sandboxes that lack uv.
 
-UPDATED: 2026-07-24
+UPDATED: 2026-08-12
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ import os
 import re
 import sys
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -41,7 +42,21 @@ EVENT_CATEGORY: dict[str, str] = {
 
 SHORT_LIMIT = 200
 TOOL_INPUT_PREVIEW = 100
+DEFAULT_BUDGET = 60_000
+BLOCK_SEP = "\n\n---\n\n"
 DUMP_LOG = "/tmp/cursor-hook-debug/error.log"
+_LOCK_RE = re.compile(
+    r"<advisor-context-lock>.*?</advisor-context-lock>\s*(?:---\s*)?",
+    re.DOTALL,
+)
+_ROLE = {
+    "user": "User",
+    "assistant": "Assistant",
+    "thinking": "Thinking",
+    "error": "Error",
+    "tool": "Tool",
+    "meta": "Meta",
+}
 
 
 def log_error(msg: str) -> None:
@@ -107,18 +122,22 @@ def local_dt(ts: str | None) -> datetime | None:
     return dt
 
 
-def format_time(ts: str | None) -> str:
-    dt = local_dt(ts)
-    if not dt:
-        return "??:??:??"
-    return dt.strftime("%H:%M:%S")
-
-
 def format_ts(ts: str | None) -> str:
     dt = local_dt(ts)
     if not dt:
         return "?"
     return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_header_ts(ts: str | None) -> str:
+    dt = local_dt(ts)
+    if not dt:
+        return "?"
+    return dt.strftime("%Y-%m-%d")
+
+
+def strip_advisor_lock(text: str) -> str:
+    return _LOCK_RE.sub("", text).strip()
 
 
 def truncate(text: str, limit: int) -> str:
@@ -157,32 +176,34 @@ def compact_json(obj: object, limit: int = 200) -> str:
         return "[UNSERIALIZABLE_DATA]"
 
 
-def tool_summary(event: dict) -> str:
+def tool_summary(event: dict, short: bool = False) -> str:
     name = event.get("hook_event_name", "tool")
     if name == "beforeReadFile":
-        return f"Read file {event.get('file_path', '?')}"
+        return f"Read: {event.get('file_path', '?')}"
     if name == "afterFileEdit":
-        return f"Edit {event.get('file_path', '?')}"
+        return f"Edit: {event.get('file_path', '?')}"
     if name == "subagentStart":
-        return f"Subagent start {event.get('subagent_type', '?')}: {truncate(str(event.get('task', '')), 120)}"
-    if name == "subagentStop":
-        return f"Subagent stop {event.get('subagent_type', '?')} ({event.get('status', '?')})"
+        desc = event.get("description") or event.get("subagent_type") or "?"
+        return f"Subagent start {event.get('subagent_type', '?')}: {desc}"
     tool_name = event.get("tool_name") or name
     tool_input = event.get("tool_input") or {}
     if tool_name == "Shell" and isinstance(tool_input, dict):
-        cmd = tool_input.get("command", "")
-        return f"Shell: {truncate(str(cmd), 160)}"
+        cmd = str(tool_input.get("command", ""))
+        return f"Shell: {truncate(cmd, SHORT_LIMIT) if short else cmd}"
     if tool_name in ("Read", "Write", "StrReplace") and isinstance(tool_input, dict):
         fp = tool_input.get("file_path", "?")
         return f"{tool_name}: {fp}"
     if name == "postToolUse":
         out = event.get("tool_output")
         if out is not None:
-            return f"{tool_name}: {truncate(str(out), 120)}"
+            preview = truncate(str(out), 120)
+            return f"{tool_name}: {preview}"
+        return str(tool_name)
     if name == "postToolUseFailure":
         return f"{tool_name} failed: {event.get('error_message', '?')}"
     if isinstance(tool_input, dict) and tool_input:
-        return f"{tool_name}: {truncate(compact_json(tool_input, TOOL_INPUT_PREVIEW), 160)}"
+        preview = compact_json(tool_input, TOOL_INPUT_PREVIEW if short else 400)
+        return f"{tool_name}: {preview}"
     return str(tool_name)
 
 
@@ -197,12 +218,206 @@ def body_for_event(event: dict, short: bool) -> str:
     elif cat == "error":
         body = str(event.get("error_message", compact_json(event)))
     elif cat == "tool":
-        body = tool_summary(event)
+        body = tool_summary(event, short=short)
     else:
         body = compact_json({k: v for k, v in event.items() if k not in ("ts", "conversation_id", "generation_id")})
     if short:
         body = truncate(body, SHORT_LIMIT)
     return body
+
+
+def is_task_call(event: dict) -> bool:
+    return event.get("hook_event_name") == "preToolUse" and event.get("tool_name") == "Task"
+
+
+def is_subagent_stop(event: dict) -> bool:
+    return event.get("hook_event_name") == "subagentStop"
+
+
+@dataclass
+class Block:
+    start_idx: int
+    end_idx: int
+    text: str
+    category: str
+
+    @property
+    def n_chars(self) -> int:
+        return len(self.text)
+
+
+def format_subagent_block(
+    call_idx: int | None,
+    call_ev: dict | None,
+    stop_idx: int | None,
+    stop_ev: dict | None,
+    short: bool,
+) -> Block:
+    tool_input = (call_ev or {}).get("tool_input") or {}
+    if not isinstance(tool_input, dict):
+        tool_input = {}
+    sub_type = (
+        tool_input.get("subagent_type")
+        or (stop_ev or {}).get("subagent_type")
+        or "?"
+    )
+    desc = tool_input.get("description") or (stop_ev or {}).get("description") or ""
+    prompt = str(tool_input.get("prompt") or "")
+    if not prompt and stop_ev:
+        prompt = str(stop_ev.get("task") or "")
+    prompt = strip_advisor_lock(prompt)
+    if short:
+        prompt = truncate(prompt, SHORT_LIMIT)
+
+    status = str((stop_ev or {}).get("status") or "")
+
+    header = f"**Subagent**  {sub_type}"
+    if desc:
+        header += f"  ·  {desc}"
+    lines = [header]
+
+    if prompt:
+        lines.append("")
+        lines.append("Call:")
+        lines.append(prompt)
+    if stop_ev is not None:
+        lines.append("")
+        lines.append("Returned:")
+        lines.append(status or "unknown")
+
+    start = call_idx if call_idx is not None else (stop_idx or 0)
+    end = stop_idx if stop_idx is not None else (call_idx or 0)
+    return Block(start, end, "\n".join(lines), "tool")
+
+
+def format_plain_block(idx: int, event: dict, short: bool) -> Block | None:
+    cat = category_for(event)
+    body = body_for_event(event, short)
+    if not body:
+        return None
+    role = _ROLE.get(cat, cat.title())
+    text = f"**{role}**\n\n{body}"
+    return Block(idx, idx, text, cat)
+
+
+def render_blocks(indexed: list[tuple[int, dict]], short: bool) -> list[Block]:
+    stops_by_id: dict[str, tuple[int, dict]] = {}
+    for idx, ev in indexed:
+        if is_subagent_stop(ev):
+            sid = ev.get("subagent_id")
+            if isinstance(sid, str) and sid:
+                stops_by_id[sid] = (idx, ev)
+
+    skip: set[int] = set()
+    blocks: list[Block] = []
+    for idx, ev in indexed:
+        if idx in skip:
+            continue
+        if is_task_call(ev):
+            tool_use_id = ev.get("tool_use_id")
+            stop = stops_by_id.get(tool_use_id) if isinstance(tool_use_id, str) else None
+            if stop:
+                skip.add(stop[0])
+                blocks.append(format_subagent_block(idx, ev, stop[0], stop[1], short))
+            else:
+                blocks.append(format_subagent_block(idx, ev, None, None, short))
+            continue
+        if is_subagent_stop(ev):
+            blocks.append(format_subagent_block(None, None, idx, ev, short))
+            continue
+        block = format_plain_block(idx, ev, short)
+        if block:
+            blocks.append(block)
+    return blocks
+
+
+def _omit_marker(omitted_from: int, omitted_to: int, omitted_chars: int, cid: str, offset: int, limit: int) -> str:
+    cmd = f"show {cid} --offset {offset} -n {limit}" if cid else f"--offset {offset} -n {limit}"
+    return (
+        f"[... events #{omitted_from}–#{omitted_to} omitted · ~{omitted_chars:,} chars]\n"
+        f"{cmd}"
+    )
+
+
+def pack_blocks(
+    blocks: list[Block], budget: int, conversation_id: str = ""
+) -> tuple[list[str], dict | None]:
+    if not blocks:
+        return [], None
+    if budget <= 0:
+        return [b.text for b in blocks], None
+
+    def joined_len(texts: list[str]) -> int:
+        if not texts:
+            return 0
+        return sum(len(t) for t in texts) + len(BLOCK_SEP) * (len(texts) - 1)
+
+    all_texts = [b.text for b in blocks]
+    if joined_len(all_texts) <= budget:
+        return all_texts, None
+
+    head_i = 0
+    for i, b in enumerate(blocks):
+        if b.category == "user":
+            head_i = i
+            break
+    head = blocks[head_i]
+
+    tail: list[Block] = []
+    marker_placeholder = "[... events #9999–#9999 omitted · ~99,999,999 chars]"
+    for b in reversed(blocks):
+        if b.start_idx <= head.end_idx:
+            break
+        trial = [head.text, marker_placeholder, b.text] + [
+            x.text for x in reversed(tail)
+        ]
+        if joined_len(trial) > budget:
+            break
+        tail.append(b)
+    tail.reverse()
+
+    if not tail:
+        omitted_from = head.end_idx + 1
+        omitted_to = blocks[-1].end_idx
+        if omitted_from > omitted_to:
+            return [head.text], None
+        omitted_chars = sum(
+            len(b.text) for b in blocks[head_i + 1 :]
+        )
+        info = {
+            "from": omitted_from,
+            "to": omitted_to,
+            "chars": omitted_chars,
+            "offset": head_i + 1,
+            "limit": len(blocks) - head_i - 1,
+        }
+        marker = _omit_marker(
+            omitted_from, omitted_to, omitted_chars, conversation_id, info["offset"], info["limit"]
+        )
+        return [head.text, marker], info
+
+    omitted_from = head.end_idx + 1
+    omitted_to = tail[0].start_idx - 1
+    if omitted_from > omitted_to:
+        return [head.text] + [b.text for b in tail], None
+
+    omitted_blocks = [
+        b for b in blocks if b.end_idx >= omitted_from and b.start_idx <= omitted_to
+    ]
+    omitted_chars = sum(len(b.text) for b in omitted_blocks)
+    first_omitted_i = head_i + 1
+    last_kept_tail_i = len(blocks) - len(tail)
+    info = {
+        "from": omitted_from,
+        "to": omitted_to,
+        "chars": omitted_chars,
+        "offset": first_omitted_i,
+        "limit": last_kept_tail_i - first_omitted_i,
+    }
+    marker = _omit_marker(
+        omitted_from, omitted_to, omitted_chars, conversation_id, info["offset"], info["limit"]
+    )
+    return [head.text, marker] + [b.text for b in tail], info
 
 
 def load_transcript(path: Path) -> tuple[list[dict], int]:
@@ -361,12 +576,101 @@ def cmd_guide() -> int:
     print()
     print("Usage:")
     print(f"  {prog} list [--all | -n N]           # list recent transcripts")
-    print(f"  {prog} show {example_id}          # short bodies, first 20 events")
-    print(f"  {prog} show {example_id} --only user,assistant --offset 20 --full")
+    print(f"  {prog} show {example_id}          # conversation view (~60k chars)")
+    print(f"  {prog} show {example_id} --only user,assistant")
     print(f"  {prog} search \"keywords\" [-n N]      # keyword search across transcripts")
     print()
     print("Categories for --only: user, assistant, thinking, tool, error, meta")
+    print("Default show hides thinking; follow the footer for next-step commands.")
     return 0
+
+
+def _parse_only(raw: str | None) -> set[str] | None:
+    if not raw:
+        return None
+    return {p.strip() for p in raw.split(",") if p.strip()}
+
+
+def _filter_indexed(
+    events: list[dict], only: set[str] | None, hide_thinking: bool
+) -> list[tuple[int, dict]]:
+    indexed: list[tuple[int, dict]] = []
+    for idx, ev in enumerate(events, start=1):
+        cat = category_for(ev)
+        if hide_thinking and cat == "thinking":
+            continue
+        if only is not None and cat not in only:
+            continue
+        indexed.append((idx, ev))
+    return indexed
+
+
+def _print_show_header(conversation_id: str, events: list[dict]) -> None:
+    start = format_header_ts(events[0].get("ts") if events else None)
+    print(f"# {conversation_id}  ·  {start}  ·  {len(events)} events")
+    print()
+
+
+def _shown_event_count(blocks: list[Block], texts: list[str]) -> int:
+    shown_texts = set(texts)
+    indices: set[int] = set()
+    for b in blocks:
+        if b.text in shown_texts and not b.text.startswith("[... events #"):
+            for i in range(b.start_idx, b.end_idx + 1):
+                indices.add(i)
+    return len(indices)
+
+
+def _print_budget_footer(
+    conversation_id: str,
+    body: str,
+    budget: int,
+    shown_events: int,
+    total_events: int,
+    omitted: dict | None,
+    hide_thinking: bool,
+    showed_tools: bool,
+    only: set[str] | None,
+    is_full: bool,
+) -> None:
+    cid = conversation_id
+    if budget > 0 and not is_full:
+        print(f"# {len(body):,}/{budget:,} chars · {shown_events}/{total_events} events")
+    else:
+        print(f"# {len(body):,} chars · {shown_events}/{total_events} events")
+    if omitted and omitted.get("limit", 0) > 0:
+        print(
+            f"# omitted middle:  show {cid} --offset {omitted['offset']} -n {omitted['limit']}"
+        )
+    if showed_tools and only is None:
+        print(f"# dialogue only:   show {cid} --only user,assistant")
+    if hide_thinking:
+        print(f"# include thinking: show {cid} --only thinking")
+    if omitted and budget > 0:
+        print(f"# wider dump:      show {cid} --budget {budget * 2}")
+    if not is_full:
+        print(f"# entire file:     show {cid} --full")
+    print('# find a moment:   search "keyword"')
+
+
+def _print_paging_footer(
+    conversation_id: str,
+    offset: int,
+    end: int,
+    total: int,
+    limit: int,
+    only: set[str] | None,
+    hide_thinking: bool,
+) -> None:
+    cid = conversation_id
+    extra = f" --only {','.join(sorted(only))}" if only else ""
+    print(f"# events {offset + 1}-{end} of {total}")
+    if end < total:
+        print(f"# next page:       show {cid} --offset {end} -n {limit}{extra}")
+    if hide_thinking:
+        print(f"# include thinking: show {cid} --only thinking")
+    print(f"# entire file:     show {cid} --full")
+    print('# find a moment:   search "keyword"')
 
 
 def cmd_show(args: argparse.Namespace) -> int:
@@ -379,9 +683,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"Cannot access transcript: {args.conversation_id} ({e})", file=sys.stderr)
         return 1
 
-    only = None
-    if args.only:
-        only = {p.strip() for p in args.only.split(",") if p.strip()}
+    only = _parse_only(args.only)
     events, skipped = load_transcript(path)
     if args.json:
         for ev in events:
@@ -391,33 +693,57 @@ def cmd_show(args: argparse.Namespace) -> int:
         if skipped:
             print(f"# skipped {skipped} malformed line(s)", file=sys.stderr)
         return 0
-    short = not args.full
-    matching = [
-        (idx, ev)
-        for idx, ev in enumerate(events, start=1)
-        if not only or category_for(ev) in only
-    ]
-    total = len(matching)
-    offset = args.offset if args.offset >= 0 else max(0, total + args.offset)
-    page = matching[offset : offset + args.limit]
-    for idx, ev in page:
-        cat = category_for(ev)
-        header = f"[#{idx} {format_time(ev.get('ts'))}] {cat}"
-        body = body_for_event(ev, short)
-        print(header)
+
+    hide_thinking = not args.full and (only is None or "thinking" not in only)
+    indexed = _filter_indexed(events, only, hide_thinking)
+    short = bool(args.short)
+    paging = args.offset is not None or args.limit is not None
+    cid = args.conversation_id
+
+    _print_show_header(cid, events)
+
+    if paging:
+        total = len(indexed)
+        offset = args.offset if args.offset is not None else 0
+        if offset < 0:
+            offset = max(0, total + offset)
+        limit = args.limit if args.limit is not None else 20
+        page = indexed[offset : offset + limit]
+        blocks = render_blocks(page, short=short)
+        texts = [b.text for b in blocks]
+        body = BLOCK_SEP.join(texts)
         if body:
             print(body)
-        print()
-    end = offset + len(page)
-    filtered = len(events) - total
-    print(f"# events {offset + 1}-{end} of {total} ({filtered} filtered by --only).")
-    hints = []
-    if end < total:
-        hints.append(f"next page: --offset {end}")
-    if short:
-        hints.append("full bodies: --full")
-    hints.append("narrow: --only user,assistant,thinking,tool,error,meta")
-    print("# " + " | ".join(hints))
+            print()
+            print("---")
+            print()
+        end = offset + len(page)
+        _print_paging_footer(cid, offset, end, total, limit, only, hide_thinking)
+    else:
+        blocks = render_blocks(indexed, short=short)
+        budget = 0 if args.full else args.budget
+        texts, omitted = pack_blocks(blocks, budget, cid)
+        body = BLOCK_SEP.join(texts)
+        if body:
+            print(body)
+            print()
+            print("---")
+            print()
+        shown_events = _shown_event_count(blocks, texts)
+        showed_tools = any(b.category == "tool" and b.text in texts for b in blocks)
+        _print_budget_footer(
+            cid,
+            body,
+            args.budget if not args.full else 0,
+            shown_events,
+            len(events),
+            omitted,
+            hide_thinking,
+            showed_tools,
+            only,
+            args.full,
+        )
+
     if skipped:
         print(f"# skipped {skipped} malformed line(s)", file=sys.stderr)
     return 0
@@ -494,15 +820,31 @@ def build_parser() -> argparse.ArgumentParser:
     show_p.add_argument(
         "--short",
         action="store_true",
-        help="Truncate bodies (default; kept for compatibility)",
+        help="Truncate bodies to 200 characters",
     )
-    show_p.add_argument("--full", action="store_true", help="Untruncated bodies")
-    show_p.add_argument("-n", "--limit", type=int, default=20, help="Max events per page")
+    show_p.add_argument(
+        "--full",
+        action="store_true",
+        help="Ignore budget; include thinking; do not truncate",
+    )
+    show_p.add_argument(
+        "--budget",
+        type=int,
+        default=DEFAULT_BUDGET,
+        help="Max characters for default view (0 = unlimited). Ignored with --offset/-n or --full",
+    )
+    show_p.add_argument(
+        "-n",
+        "--limit",
+        type=int,
+        default=None,
+        help="Max events per page (enables paging mode)",
+    )
     show_p.add_argument(
         "--offset",
         type=int,
-        default=0,
-        help="Skip first N matching events; negative = from the end (tail)",
+        default=None,
+        help="Skip first N matching events; negative = from the end (enables paging mode)",
     )
     show_p.add_argument("--json", action="store_true", help="Output raw JSON lines")
     show_p.set_defaults(func=cmd_show)
