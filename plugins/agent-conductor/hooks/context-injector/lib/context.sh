@@ -80,6 +80,41 @@ build_subagent_context() {
   fi
 }
 
+ID_UNAVAILABLE='(conversation id unavailable)'
+ADVISOR_PROMPT_HEADER='CHAT TRANSCRIPT TO ADVISE ON:'
+
+_advisor_stub() {
+  local dump_dir="/tmp/cursor-hook-debug"
+  mkdir -p "$dump_dir" 2>/dev/null || true
+  echo "$(date -u): FAILED (advisor inject) - $1" >> "$dump_dir/error.log"
+  printf '%s\n\n%s\n' "$ADVISOR_PROMPT_HEADER" "$ID_UNAVAILABLE"
+}
+
+advisor_injection_prompt() {
+  local lookup_conversation_id="$1" fallback_conversation_id="${2:-}" session_id="${3:-}"
+  local cid output transcripts_py
+
+  cid=$(substitute_subagent_tokens "$CONVERSATION_ID_TOKEN" "$lookup_conversation_id" "$fallback_conversation_id" "$session_id")
+  if [[ -z "$cid" || "$cid" == "$ID_UNAVAILABLE" || "$cid" == "$CONVERSATION_ID_TOKEN" ]]; then
+    _advisor_stub "conversation id unavailable"
+    return 0
+  fi
+
+  transcripts_py="${HOOKS_DIR}/../transcriptor/transcripts.py"
+  if [[ ! -f "$transcripts_py" ]] || ! command -v python3 >/dev/null 2>&1; then
+    _advisor_stub "transcripts CLI missing"
+    return 0
+  fi
+
+  output=$(python3 "$transcripts_py" show "$cid" 2>/dev/null) || output=""
+  if [[ -z "$output" ]]; then
+    _advisor_stub "show failed or empty for ${cid}"
+    return 0
+  fi
+
+  printf '%s\n\n%s\n' "$ADVISOR_PROMPT_HEADER" "$output"
+}
+
 is_cli_agent() {
   local composer_mode_raw="$1"
   [[ -z "$composer_mode_raw" ]]

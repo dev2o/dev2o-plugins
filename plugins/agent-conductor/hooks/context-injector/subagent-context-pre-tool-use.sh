@@ -46,22 +46,32 @@ PARENT_CONVERSATION_ID=$(printf '%s\n' "$INPUT" | jq -r '.parent_conversation_id
 SESSION_ID=$(printf '%s\n' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || echo "")
 ORIG_PROMPT=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null || echo "")
 
-if ! command -v build_subagent_context >/dev/null 2>&1; then
-  fail_open "Function 'build_subagent_context' not found after sourcing $CONTEXT_LIB"
-fi
+if [[ "$SUBAGENT_TYPE" == "advisor" ]]; then
+  if ! command -v advisor_injection_prompt >/dev/null 2>&1; then
+    fail_open "Function 'advisor_injection_prompt' not found after sourcing $CONTEXT_LIB"
+  fi
+  NEW_PROMPT=$(advisor_injection_prompt "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
+  if [[ -z "$NEW_PROMPT" ]]; then
+    echo "$(date -u): FAILED (preToolUse) - advisor_injection_prompt returned empty" >> "$DUMP_DIR/error.log"
+    NEW_PROMPT="CHAT TRANSCRIPT TO ADVISE ON:
 
-CONTEXT=$(build_subagent_context "$SUBAGENT_TYPE" "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
-if [[ -z "$CONTEXT" ]]; then
-  echo '{"permission": "allow"}'
-  exit 0
-fi
-
-# 6. Inject context and construct the modified tool payload
-NEW_PROMPT="${CONTEXT}
+(conversation id unavailable)"
+  fi
+else
+  if ! command -v build_subagent_context >/dev/null 2>&1; then
+    fail_open "Function 'build_subagent_context' not found after sourcing $CONTEXT_LIB"
+  fi
+  CONTEXT=$(build_subagent_context "$SUBAGENT_TYPE" "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
+  if [[ -z "$CONTEXT" ]]; then
+    echo '{"permission": "allow"}'
+    exit 0
+  fi
+  NEW_PROMPT="${CONTEXT}
 
 ---
 
 ${ORIG_PROMPT}"
+fi
 
 if ! OUTPUT_JSON=$(jq -nc \
   --arg prompt "$NEW_PROMPT" \
