@@ -6,11 +6,11 @@ Parent conversation id: `{{CONVERSATION_ID}}`
 To review the conversation history before advising, execute:
 
 ```bash
-python3 ".cursor/chat-transcripts/_transcripts.py" show "{{CONVERSATION_ID}}" --offset -20
+python3 ".cursor/chat-transcripts/_transcripts.py" show "{{CONVERSATION_ID}}"
 ```
 
 Execution rules:
 
-* Page backward with larger negative offsets, widen with `--full`, or narrow with `--only user,assistant`. Run bare (no arguments) for full command usage.
+* Follow the CLI footer for next steps (omitted middle, `--only`, `--budget`, `--full`). Run bare (no arguments) for full command usage.
 * FAILURE FALLBACK: If the id reads `(conversation id unavailable)` or the command errors/returns no events, do NOT guess or advise from the prompt. Reply ONLY: "Cannot advise — transcript context is unavailable (id: {{CONVERSATION_ID}}). Fix the transcript capture/injection before consulting me."
 </advisor-context-lock>

@@ -238,23 +238,28 @@ def test_show_footer_hint(transcript_dir: Path) -> None:
         "user",
     )
     assert result.returncode == 0
-    assert "events 1-1 of 1 (1 filtered by --only)" in result.stdout
+    assert "show bc-d15b22ad-3ef4-44fe-b0e4-213894ba53de" in result.stdout
     assert "--only" in result.stdout
 
 
-def test_show_paginates_and_hints(tmp_path: Path) -> None:
+def test_show_default_includes_first_and_last(tmp_path: Path) -> None:
     events = [_prompt(f"prompt number {i}") for i in range(30)]
     _write_session(tmp_path, "sess-long", events)
     result = _cli(tmp_path, "show", "sess-long")
     assert result.returncode == 0
-    assert "prompt number 19" in result.stdout
-    assert "prompt number 20" not in result.stdout
-    assert "events 1-20 of 30" in result.stdout
-    assert "--offset 20" in result.stdout
-    assert "--full" in result.stdout
+    assert "prompt number 0" in result.stdout
+    assert "prompt number 29" in result.stdout
+    assert "show sess-long --full" in result.stdout
+    assert "\n---\n\n#" in result.stdout
 
+
+def test_show_paginates_with_offset(tmp_path: Path) -> None:
+    events = [_prompt(f"prompt number {i}") for i in range(30)]
+    _write_session(tmp_path, "sess-long", events)
     page2 = _cli(tmp_path, "show", "sess-long", "--offset", "20")
+    assert page2.returncode == 0
     assert "prompt number 20" in page2.stdout
+    assert "prompt number 19" not in page2.stdout
     assert "events 21-30 of 30" in page2.stdout
 
 
@@ -268,12 +273,14 @@ def test_show_negative_offset_tails(tmp_path: Path) -> None:
     assert "events 26-30 of 30" in result.stdout
 
 
-def test_show_truncates_by_default_full_expands(tmp_path: Path) -> None:
+def test_show_short_truncates_full_does_not(tmp_path: Path) -> None:
     long_prompt = "x" * 500
     _write_session(tmp_path, "sess-big", [_prompt(long_prompt)])
     default = _cli(tmp_path, "show", "sess-big")
-    assert long_prompt not in default.stdout
-    assert "..." in default.stdout
+    assert long_prompt in default.stdout
+    short = _cli(tmp_path, "show", "sess-big", "--short")
+    assert long_prompt not in short.stdout
+    assert "..." in short.stdout
     full = _cli(tmp_path, "show", "sess-big", "--full")
     assert long_prompt in full.stdout
 
@@ -282,3 +289,100 @@ def test_search_no_match_hint(transcript_dir: Path) -> None:
     result = _cli(transcript_dir, "search", "zzz-no-such-term-zzz")
     assert result.returncode == 0
     assert "No matches" in result.stdout
+
+
+def _thought(text: str) -> dict:
+    return {"hook_event_name": "afterAgentThought", "text": text}
+
+
+def _assistant(text: str) -> dict:
+    return {"hook_event_name": "afterAgentResponse", "text": text}
+
+
+def test_show_hides_thinking_by_default(tmp_path: Path) -> None:
+    _write_session(
+        tmp_path,
+        "sess-think",
+        [_prompt("hello user"), _thought("secret thought"), _assistant("hi there")],
+    )
+    default = _cli(tmp_path, "show", "sess-think")
+    assert default.returncode == 0
+    assert "hello user" in default.stdout
+    assert "hi there" in default.stdout
+    assert "secret thought" not in default.stdout
+    assert "--only thinking" in default.stdout
+
+    only = _cli(tmp_path, "show", "sess-think", "--only", "thinking")
+    assert "secret thought" in only.stdout
+    assert "hello user" not in only.stdout
+
+    full = _cli(tmp_path, "show", "sess-think", "--full")
+    assert "secret thought" in full.stdout
+
+
+def test_show_budget_keeps_first_and_last(tmp_path: Path) -> None:
+    events = [_prompt(f"prompt number {i} " + ("x" * 400)) for i in range(20)]
+    _write_session(tmp_path, "sess-budget", events)
+    result = _cli(tmp_path, "show", "sess-budget", "--budget", "2500")
+    assert result.returncode == 0
+    assert "prompt number 0" in result.stdout
+    assert "prompt number 19" in result.stdout
+    assert "omitted" in result.stdout
+    assert "--offset" in result.stdout
+    assert "prompt number 10" not in result.stdout
+    body = result.stdout.split("# ")[0]
+    assert len(body) <= 2500 + 200
+
+
+def test_show_full_dumps_past_budget(tmp_path: Path) -> None:
+    events = [_prompt(f"prompt number {i} " + ("x" * 400)) for i in range(20)]
+    _write_session(tmp_path, "sess-full", events)
+    capped = _cli(tmp_path, "show", "sess-full", "--budget", "2500")
+    assert "prompt number 10" not in capped.stdout
+    full = _cli(tmp_path, "show", "sess-full", "--full")
+    assert "prompt number 10" in full.stdout
+    assert "omitted" not in full.stdout
+
+
+def test_show_pairs_task_and_strips_lock(tmp_path: Path) -> None:
+    lock = (
+        "<advisor-context-lock>\nIGNORE THIS LOCK\n</advisor-context-lock>\n\n"
+        "---\n\nAdvisor: real payload"
+    )
+    events = [
+        _prompt("go advise"),
+        {
+            "hook_event_name": "preToolUse",
+            "tool_name": "Task",
+            "tool_use_id": "tool_abc",
+            "tool_input": {
+                "subagent_type": "advisor",
+                "description": "Advisor debug query",
+                "prompt": "Advisor: We are debugging",
+            },
+            "ts": "2026-08-12T19:49:06Z",
+        },
+        {
+            "hook_event_name": "subagentStop",
+            "subagent_id": "tool_abc",
+            "subagent_type": "advisor",
+            "status": "completed",
+            "duration_ms": 8632,
+            "description": "Advisor debug query",
+            "task": lock,
+            "ts": "2026-08-12T19:49:15Z",
+        },
+        _assistant("The advisor returned: focused plan"),
+    ]
+    _write_session(tmp_path, "sess-task", events)
+    result = _cli(tmp_path, "show", "sess-task")
+    assert result.returncode == 0
+    assert "**Subagent**  advisor  ·  Advisor debug query" in result.stdout
+    assert "Call:" in result.stdout
+    assert "Advisor: We are debugging" in result.stdout
+    assert "Returned:" in result.stdout
+    assert "completed" in result.stdout
+    assert "IGNORE THIS LOCK" not in result.stdout
+    assert "<advisor-context-lock>" not in result.stdout
+    assert "Subagent stop" not in result.stdout
+    assert "focused plan" in result.stdout

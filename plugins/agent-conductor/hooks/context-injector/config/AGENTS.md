@@ -46,7 +46,7 @@ Advisor is read-only; it reviews the transcript itself via the transcripts CLI:
 ```markdown
 Parent conversation id: `{{CONVERSATION_ID}}`
 
-Review it: CURSOR_PROJECT_DIR="{{PROJECT_DIR}}" .cursor/chat-transcripts/_transcripts.py show {{CONVERSATION_ID}} --offset -20
+Review it: CURSOR_PROJECT_DIR="{{PROJECT_DIR}}" .cursor/chat-transcripts/_transcripts.py show {{CONVERSATION_ID}}
 ```
 
 ## Example (`agent-explore.md`)
