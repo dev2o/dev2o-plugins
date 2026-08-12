@@ -43,7 +43,7 @@
       },
       {
         "command": "${CURSOR_PLUGIN_ROOT}/hooks/transcriptor/audit.sh",
-        "matcher": "Grep|Delete",
+        "matcher": "Grep|Delete|Task",
         "timeout": 30
       }
     ],
