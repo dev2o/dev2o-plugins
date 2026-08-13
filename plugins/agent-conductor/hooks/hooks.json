@@ -37,6 +37,11 @@
     ],
     "preToolUse": [
       {
+        "command": "${CURSOR_PLUGIN_ROOT}/hooks/context-injector/advisor-model-deny.sh",
+        "matcher": "Task",
+        "timeout": 30
+      },
+      {
         "command": "${CURSOR_PLUGIN_ROOT}/hooks/context-injector/subagent-context-pre-tool-use.sh",
         "matcher": "Task",
         "timeout": 30
