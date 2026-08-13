@@ -20,7 +20,7 @@ def _run(payload: dict) -> dict:
         capture_output=True,
         check=True,
     )
-    return json.loads(result.stdout)
+    return json.loads(result.stdout) if result.stdout.strip() else {"permission": "allow"}
 
 
 def _advisor_task(**kwargs) -> dict:
@@ -36,7 +36,7 @@ def test_deny_empty_top_level_model() -> None:
     out = _run(_advisor_task())
     assert out["permission"] == "deny"
     assert DENY_SNIPPET in out["agent_message"]
-    assert "user_message" not in out
+    assert DENY_SNIPPET in out["user_message"]
 
 
 def test_deny_omitted_model() -> None:

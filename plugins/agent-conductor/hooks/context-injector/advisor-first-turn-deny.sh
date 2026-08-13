@@ -22,13 +22,11 @@ fi
 
 TOOL_NAME=$(printf '%s\n' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 if [[ "$TOOL_NAME" != "Task" ]]; then
-  echo '{"permission": "allow"}'
   exit 0
 fi
 
 SUBAGENT_TYPE=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || echo "")
 if [[ "$SUBAGENT_TYPE" != "advisor" ]]; then
-  echo '{"permission": "allow"}'
   exit 0
 fi
 
@@ -49,12 +47,11 @@ fi
 COUNT=${COUNT:-0}
 
 if [[ "$COUNT" -ge 2 ]]; then
-  echo '{"permission": "allow"}'
   exit 0
 fi
 
 MSG='ensure your usage of the advisor follows the advisor_protocol, then reuse when ready'
-if ! OUTPUT_JSON=$(jq -nc --arg m "$MSG" '{permission: "deny", agent_message: $m}' 2>/dev/null); then
+if ! OUTPUT_JSON=$(jq -nc --arg m "$MSG" '{permission: "deny", agent_message: $m, user_message: $m}' 2>/dev/null); then
   fail_open "Failed to construct deny JSON payload with jq"
 fi
 printf '%s\n' "$OUTPUT_JSON"
