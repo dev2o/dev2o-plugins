@@ -10,7 +10,7 @@ manager. The PEP 723 metadata block above declares zero dependencies, so
 `uv run` (or any PEP 723 runner) still works, but is not required — the
 plain `python3` shebang avoids dying in sandboxes that lack uv.
 
-UPDATED: 2026-08-12
+UPDATED: 2026-08-13
 """
 
 from __future__ import annotations
@@ -581,7 +581,7 @@ def cmd_guide() -> int:
     print(f"  {prog} search \"keywords\" [-n N]      # keyword search across transcripts")
     print()
     print("Categories for --only: user, assistant, thinking, tool, error, meta")
-    print("Default show hides thinking; follow the footer for next-step commands.")
+    print("Default show hides thinking; see the footer for optional flags.")
     return 0
 
 
@@ -611,66 +611,12 @@ def _print_show_header(conversation_id: str, events: list[dict]) -> None:
     print()
 
 
-def _shown_event_count(blocks: list[Block], texts: list[str]) -> int:
-    shown_texts = set(texts)
-    indices: set[int] = set()
-    for b in blocks:
-        if b.text in shown_texts and not b.text.startswith("[... events #"):
-            for i in range(b.start_idx, b.end_idx + 1):
-                indices.add(i)
-    return len(indices)
-
-
-def _print_budget_footer(
-    conversation_id: str,
-    body: str,
-    budget: int,
-    shown_events: int,
-    total_events: int,
-    omitted: dict | None,
-    hide_thinking: bool,
-    showed_tools: bool,
-    only: set[str] | None,
-    is_full: bool,
-) -> None:
-    cid = conversation_id
-    if budget > 0 and not is_full:
-        print(f"# {len(body):,}/{budget:,} chars · {shown_events}/{total_events} events")
-    else:
-        print(f"# {len(body):,} chars · {shown_events}/{total_events} events")
-    if omitted and omitted.get("limit", 0) > 0:
-        print(
-            f"# omitted middle:  show {cid} --offset {omitted['offset']} -n {omitted['limit']}"
-        )
-    if showed_tools and only is None:
-        print(f"# dialogue only:   show {cid} --only user,assistant")
-    if hide_thinking:
-        print(f"# include thinking: show {cid} --only thinking")
-    if omitted and budget > 0:
-        print(f"# wider dump:      show {cid} --budget {budget * 2}")
-    if not is_full:
-        print(f"# entire file:     show {cid} --full")
-    print('# find a moment:   search "keyword"')
-
-
-def _print_paging_footer(
-    conversation_id: str,
-    offset: int,
-    end: int,
-    total: int,
-    limit: int,
-    only: set[str] | None,
-    hide_thinking: bool,
-) -> None:
-    cid = conversation_id
-    extra = f" --only {','.join(sorted(only))}" if only else ""
-    print(f"# events {offset + 1}-{end} of {total}")
-    if end < total:
-        print(f"# next page:       show {cid} --offset {end} -n {limit}{extra}")
-    if hide_thinking:
-        print(f"# include thinking: show {cid} --only thinking")
-    print(f"# entire file:     show {cid} --full")
-    print('# find a moment:   search "keyword"')
+def _print_show_footer(conversation_id: str) -> None:
+    print("--- END OF USER TRANSCRIPT")
+    print()
+    print(
+        f".cursor/chat-transcripts/_transcripts.py show {conversation_id} [--only user,assistant,thinking] [--full]"
+    )
 
 
 def cmd_show(args: argparse.Namespace) -> int:
@@ -715,34 +661,16 @@ def cmd_show(args: argparse.Namespace) -> int:
         if body:
             print(body)
             print()
-            print("---")
-            print()
-        end = offset + len(page)
-        _print_paging_footer(cid, offset, end, total, limit, only, hide_thinking)
+        _print_show_footer(cid)
     else:
         blocks = render_blocks(indexed, short=short)
         budget = 0 if args.full else args.budget
-        texts, omitted = pack_blocks(blocks, budget, cid)
+        texts, _omitted = pack_blocks(blocks, budget, cid)
         body = BLOCK_SEP.join(texts)
         if body:
             print(body)
             print()
-            print("---")
-            print()
-        shown_events = _shown_event_count(blocks, texts)
-        showed_tools = any(b.category == "tool" and b.text in texts for b in blocks)
-        _print_budget_footer(
-            cid,
-            body,
-            args.budget if not args.full else 0,
-            shown_events,
-            len(events),
-            omitted,
-            hide_thinking,
-            showed_tools,
-            only,
-            args.full,
-        )
+        _print_show_footer(cid)
 
     if skipped:
         print(f"# skipped {skipped} malformed line(s)", file=sys.stderr)
