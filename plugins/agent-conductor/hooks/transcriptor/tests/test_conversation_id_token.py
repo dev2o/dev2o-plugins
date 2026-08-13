@@ -47,7 +47,8 @@ def _advisor_prompt(project_root: Path, lookup: str, fallback: str = "") -> str:
 def test_advisor_prompt_contains_show_output(tmp_path: Path) -> None:
     _write_transcript(tmp_path, REAL_ID)
     out = _advisor_prompt(tmp_path, REAL_ID)
-    assert "CHAT TRANSCRIPT TO ADVISE ON:" in out
+    assert "<execution_transcript>" in out
+    assert "</execution_transcript>" in out
     assert MARKER in out
     assert REAL_ID in out
     assert "Advise." not in out
@@ -64,7 +65,7 @@ def test_advisor_prompt_uses_resolved_fallback_id(tmp_path: Path) -> None:
 
 def test_advisor_prompt_unavailable_without_id(tmp_path: Path) -> None:
     out = _advisor_prompt(tmp_path, "")
-    assert "CHAT TRANSCRIPT TO ADVISE ON:" in out
+    assert "<execution_transcript>" in out
     assert "(conversation id unavailable)" in out
     assert "Advise." not in out
     assert "{{CONVERSATION_ID}}" not in out
@@ -91,7 +92,7 @@ def test_hook_replaces_orig_prompt(tmp_path: Path) -> None:
     data = json.loads(proc.stdout)
     prompt = data["updated_input"]["prompt"]
     assert data["permission"] == "allow"
-    assert "CHAT TRANSCRIPT TO ADVISE ON:" in prompt
+    assert "<execution_transcript>" in prompt
     assert MARKER in prompt
     assert "Advise." not in prompt
     assert "{{CONVERSATION_ID}}" not in prompt

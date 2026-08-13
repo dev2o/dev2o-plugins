@@ -81,13 +81,36 @@ build_subagent_context() {
 }
 
 ID_UNAVAILABLE='(conversation id unavailable)'
-ADVISOR_PROMPT_HEADER='CHAT TRANSCRIPT TO ADVISE ON:'
+
+advisor_wrap_transcript() {
+  local transcript="$1"
+  cat <<'EOF'
+The Executor agent has paused its workflow. You must provide strategic oversight based on the transcript of its actions so far.
+
+<environment_awareness>
+You are operating within the Cursor IDE. You have implicit access to the workspace context, file contents, and codebase embeddings attached to this session. The <execution_transcript> represents what the Executor *thinks* it is doing; you must verify its assumptions against the actual codebase reality.
+</environment_awareness>
+
+<execution_transcript>
+EOF
+  printf '%s\n' "$transcript"
+  cat <<'EOF'
+</execution_transcript>
+
+<advisor_directives>
+1. Deduce the Objective: Read the earliest entries in the <execution_transcript> to identify the user's original goal.
+2. Analyze the State: Evaluate the Executor's recent steps and errors. Are they on the right track or stuck in a loop?
+3. Cross-Reference: Compare the transcript against your Cursor workspace context. Is the Executor making false assumptions about file structures or dependencies?
+4. Direct: Output your strategic guidance immediately. Tell the Executor exactly what to do next, which files to target, or why its current approach is failing.
+</advisor_directives>
+EOF
+}
 
 _advisor_stub() {
   local dump_dir="/tmp/cursor-hook-debug"
   mkdir -p "$dump_dir" 2>/dev/null || true
   echo "$(date -u): FAILED (advisor inject) - $1" >> "$dump_dir/error.log"
-  printf '%s\n\n%s\n' "$ADVISOR_PROMPT_HEADER" "$ID_UNAVAILABLE"
+  advisor_wrap_transcript "$ID_UNAVAILABLE"
 }
 
 advisor_injection_prompt() {
@@ -112,7 +135,7 @@ advisor_injection_prompt() {
     return 0
   fi
 
-  printf '%s\n\n%s\n' "$ADVISOR_PROMPT_HEADER" "$output"
+  advisor_wrap_transcript "$output"
 }
 
 is_cli_agent() {

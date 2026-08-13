@@ -238,7 +238,11 @@ def test_show_footer_hint(transcript_dir: Path) -> None:
         "user",
     )
     assert result.returncode == 0
-    assert "show bc-d15b22ad-3ef4-44fe-b0e4-213894ba53de" in result.stdout
+    assert "END OF USER TRANSCRIPT" in result.stdout
+    assert (
+        ".cursor/chat-transcripts/_transcripts.py show "
+        "bc-d15b22ad-3ef4-44fe-b0e4-213894ba53de"
+    ) in result.stdout
     assert "--only" in result.stdout
 
 
@@ -249,8 +253,8 @@ def test_show_default_includes_first_and_last(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "prompt number 0" in result.stdout
     assert "prompt number 29" in result.stdout
-    assert "show sess-long --full" in result.stdout
-    assert "\n---\n\n#" in result.stdout
+    assert "END OF USER TRANSCRIPT" in result.stdout
+    assert "[--full]" in result.stdout
 
 
 def test_show_paginates_with_offset(tmp_path: Path) -> None:
@@ -260,7 +264,7 @@ def test_show_paginates_with_offset(tmp_path: Path) -> None:
     assert page2.returncode == 0
     assert "prompt number 20" in page2.stdout
     assert "prompt number 19" not in page2.stdout
-    assert "events 21-30 of 30" in page2.stdout
+    assert "END OF USER TRANSCRIPT" in page2.stdout
 
 
 def test_show_negative_offset_tails(tmp_path: Path) -> None:
@@ -270,7 +274,7 @@ def test_show_negative_offset_tails(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "prompt number 25" in result.stdout
     assert "prompt number 24" not in result.stdout
-    assert "events 26-30 of 30" in result.stdout
+    assert "END OF USER TRANSCRIPT" in result.stdout
 
 
 def test_show_short_truncates_full_does_not(tmp_path: Path) -> None:
@@ -310,7 +314,7 @@ def test_show_hides_thinking_by_default(tmp_path: Path) -> None:
     assert "hello user" in default.stdout
     assert "hi there" in default.stdout
     assert "secret thought" not in default.stdout
-    assert "--only thinking" in default.stdout
+    assert "[--only user,assistant,thinking]" in default.stdout
 
     only = _cli(tmp_path, "show", "sess-think", "--only", "thinking")
     assert "secret thought" in only.stdout

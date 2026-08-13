@@ -53,9 +53,7 @@ if [[ "$SUBAGENT_TYPE" == "advisor" ]]; then
   NEW_PROMPT=$(advisor_injection_prompt "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
   if [[ -z "$NEW_PROMPT" ]]; then
     echo "$(date -u): FAILED (preToolUse) - advisor_injection_prompt returned empty" >> "$DUMP_DIR/error.log"
-    NEW_PROMPT="CHAT TRANSCRIPT TO ADVISE ON:
-
-(conversation id unavailable)"
+    NEW_PROMPT=$(advisor_wrap_transcript "$ID_UNAVAILABLE")
   fi
 else
   if ! command -v build_subagent_context >/dev/null 2>&1; then
