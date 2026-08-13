@@ -11,7 +11,14 @@ from conftest import REPO_ROOT
 
 DENY_SH = REPO_ROOT / "hooks" / "context-injector" / "advisor-first-turn-deny.sh"
 CID = "11111111-1111-1111-1111-111111111111"
-DENY_MSG = "ensure your usage of the advisor follows the advisor_protocol, then reuse when ready"
+GEN = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+PRIOR = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+DENY_MSG = (
+    "It is not common to use the advisor on the first turn.  You should gather intel, "
+    "understand the project, and then ensure your usage of the advisor follows the "
+    "advisor_protocol, then reuse when ready. Do not ignore future use of the advisor "
+    "because of this block."
+)
 
 
 def _run(project_root: Path, payload: dict) -> dict:
@@ -32,6 +39,7 @@ def _advisor_task() -> dict:
     return {
         "tool_name": "Task",
         "conversation_id": CID,
+        "generation_id": GEN,
         "tool_input": {
             "description": "Advise",
             "prompt": "Advise.",
@@ -41,16 +49,23 @@ def _advisor_task() -> dict:
     }
 
 
-def _write_prompts(project_root: Path, n: int) -> None:
+def _write_events(project_root: Path, events: list[dict]) -> None:
     log_dir = project_root / ".cursor" / "chat-transcripts"
     log_dir.mkdir(parents=True)
-    line = json.dumps({"hook_event_name": "beforeSubmitPrompt", "prompt": "hi"}) + "\n"
-    extra = json.dumps({"hook_event_name": "afterAgentThought", "text": "x"}) + "\n"
-    (log_dir / f"{CID}.jsonl").write_text(extra + line * n, encoding="utf-8")
+    (log_dir / f"{CID}.jsonl").write_text(
+        "".join(json.dumps(ev) + "\n" for ev in events),
+        encoding="utf-8",
+    )
 
 
-def test_deny_first_prompt(tmp_path: Path) -> None:
-    _write_prompts(tmp_path, 1)
+def test_deny_prompt_only(tmp_path: Path) -> None:
+    _write_events(
+        tmp_path,
+        [
+            {"generation_id": GEN, "hook_event_name": "beforeSubmitPrompt", "prompt": "hi"},
+            {"generation_id": GEN, "hook_event_name": "afterAgentThought", "text": "x"},
+        ],
+    )
     out = _run(tmp_path, _advisor_task())
     assert out["permission"] == "deny"
     assert out["agent_message"] == DENY_MSG
@@ -62,10 +77,37 @@ def test_deny_missing_transcript(tmp_path: Path) -> None:
     assert out["permission"] == "deny"
 
 
-def test_allow_second_prompt(tmp_path: Path) -> None:
-    _write_prompts(tmp_path, 2)
-    out = _run(tmp_path, _advisor_task())
-    assert out["permission"] == "allow"
+def test_allow_after_read(tmp_path: Path) -> None:
+    _write_events(
+        tmp_path,
+        [
+            {"generation_id": GEN, "hook_event_name": "beforeSubmitPrompt", "prompt": "hi"},
+            {"generation_id": GEN, "hook_event_name": "beforeReadFile", "file_path": "a.py"},
+        ],
+    )
+    assert _run(tmp_path, _advisor_task())["permission"] == "allow"
+
+
+def test_allow_after_grep(tmp_path: Path) -> None:
+    _write_events(
+        tmp_path,
+        [
+            {"generation_id": GEN, "hook_event_name": "beforeSubmitPrompt", "prompt": "hi"},
+            {"generation_id": GEN, "hook_event_name": "preToolUse", "tool_name": "Grep"},
+        ],
+    )
+    assert _run(tmp_path, _advisor_task())["permission"] == "allow"
+
+
+def test_deny_when_read_was_prior_turn(tmp_path: Path) -> None:
+    _write_events(
+        tmp_path,
+        [
+            {"generation_id": PRIOR, "hook_event_name": "beforeReadFile", "file_path": "a.py"},
+            {"generation_id": GEN, "hook_event_name": "beforeSubmitPrompt", "prompt": "hi"},
+        ],
+    )
+    assert _run(tmp_path, _advisor_task())["permission"] == "deny"
 
 
 def test_allow_non_advisor(tmp_path: Path) -> None:
@@ -74,6 +116,7 @@ def test_allow_non_advisor(tmp_path: Path) -> None:
         {
             "tool_name": "Task",
             "conversation_id": CID,
+            "generation_id": GEN,
             "tool_input": {"subagent_type": "explore", "prompt": "look"},
         },
     )

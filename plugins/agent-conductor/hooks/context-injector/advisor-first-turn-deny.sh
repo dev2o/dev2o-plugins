@@ -39,18 +39,20 @@ if [[ -z "$CONVERSATION_ID" || "$CONVERSATION_ID" == *".."* || "$CONVERSATION_ID
   fail_open "Invalid or missing conversation_id"
 fi
 
+GEN_ID=$(printf '%s\n' "$INPUT" | jq -r '.generation_id // empty' 2>/dev/null || echo "")
+if [[ -z "$GEN_ID" ]]; then
+  fail_open "Missing generation_id"
+fi
+
 LOG_FILE="$CURSOR_PROJECT_DIR/.cursor/chat-transcripts/${CONVERSATION_ID}.jsonl"
-COUNT=0
 if [[ -f "$LOG_FILE" ]]; then
-  COUNT=$(grep -cE '"hook_event_name":[[:space:]]*"beforeSubmitPrompt"' "$LOG_FILE" 2>/dev/null || true)
-fi
-COUNT=${COUNT:-0}
-
-if [[ "$COUNT" -ge 2 ]]; then
-  exit 0
+  if grep -E "\"generation_id\":[[:space:]]*\"${GEN_ID}\"" "$LOG_FILE" 2>/dev/null \
+    | grep -qE '"hook_event_name":[[:space:]]*"beforeReadFile"|"tool_name":[[:space:]]*"Grep"'; then
+    exit 0
+  fi
 fi
 
-MSG='ensure your usage of the advisor follows the advisor_protocol, then reuse when ready'
+MSG='It is not common to use the advisor on the first turn.  You should gather intel, understand the project, and then ensure your usage of the advisor follows the advisor_protocol, then reuse when ready. Do not ignore future use of the advisor because of this block.'
 if ! OUTPUT_JSON=$(jq -nc --arg m "$MSG" '{permission: "deny", agent_message: $m, user_message: $m}' 2>/dev/null); then
   fail_open "Failed to construct deny JSON payload with jq"
 fi
