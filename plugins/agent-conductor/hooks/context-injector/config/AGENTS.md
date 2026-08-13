@@ -9,12 +9,25 @@ When the main agent spawns a subagent (Task tool, slash command, etc.), the hook
 `advisor` does **not** use `agent-advisor.md`. The hook resolves `{{CONVERSATION_ID}}` with the same token logic as other context files, runs `hooks/transcriptor/transcripts.py show <id>`, and sets the Task prompt to **only**:
 
 ```
-CHAT TRANSCRIPT TO ADVISE ON:
+The Executor agent has paused its workflow. You must provide strategic oversight based on the transcript of its actions so far.
 
+<environment_awareness>
+You are operating within the Cursor IDE. You have implicit access to the workspace context, file contents, and codebase embeddings attached to this session. The <execution_transcript> represents what the Executor *thinks* it is doing; you must verify its assumptions against the actual codebase reality.
+</environment_awareness>
+
+<execution_transcript>
 <cli stdout>
+</execution_transcript>
+
+<advisor_directives>
+1. Deduce the Objective: Read the earliest entries in the <execution_transcript> to identify the user's original goal.
+2. Analyze the State: Evaluate the Executor's recent steps and errors. Are they on the right track or stuck in a loop?
+3. Cross-Reference: Compare the transcript against your Cursor workspace context. Is the Executor making false assumptions about file structures or dependencies?
+4. Direct: Output your strategic guidance immediately. Tell the Executor exactly what to do next, which files to target, or why its current approach is failing.
+</advisor_directives>
 ```
 
-The original Task prompt (`Advise.`) is dropped. If the id is unavailable or `show` fails, the same header is used with `(conversation id unavailable)`.
+The original Task prompt (`Advise.`) is dropped. If the id is unavailable or `show` fails, the same wrapper is used with `(conversation id unavailable)` inside `<execution_transcript>`.
 
 ## Adding context for a subagent
 
