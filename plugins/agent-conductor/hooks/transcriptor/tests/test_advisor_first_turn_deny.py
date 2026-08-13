@@ -14,10 +14,11 @@ CID = "11111111-1111-1111-1111-111111111111"
 GEN = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 PRIOR = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 DENY_MSG = (
-    "It is not common to use the advisor on the first turn.  You should gather intel, "
-    "understand the project, and then ensure your usage of the advisor follows the "
-    "advisor_protocol, then reuse when ready. Do not ignore future use of the advisor "
-    "because of this block."
+    "SYSTEM BLOCK: The Advisor cannot be called on Turn 1. RULE: You must first gather "
+    "context (read files, check environment, establish baseline) before requesting "
+    "strategic guidance. NEXT STEP: Proceed with information gathering. CRITICAL: This "
+    "tool is fully functional. Do NOT avoid using the Advisor later. You are expected "
+    "to call it once you have initial findings, per the advisor_protocol."
 )
 
 

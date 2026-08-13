@@ -52,7 +52,7 @@ if [[ -f "$LOG_FILE" ]]; then
   fi
 fi
 
-MSG='It is not common to use the advisor on the first turn.  You should gather intel, understand the project, and then ensure your usage of the advisor follows the advisor_protocol, then reuse when ready. Do not ignore future use of the advisor because of this block.'
+MSG='SYSTEM BLOCK: The Advisor cannot be called on Turn 1. RULE: You must first gather context (read files, check environment, establish baseline) before requesting strategic guidance. NEXT STEP: Proceed with information gathering. CRITICAL: This tool is fully functional. Do NOT avoid using the Advisor later. You are expected to call it once you have initial findings, per the advisor_protocol.'
 if ! OUTPUT_JSON=$(jq -nc --arg m "$MSG" '{permission: "deny", agent_message: $m, user_message: $m}' 2>/dev/null); then
   fail_open "Failed to construct deny JSON payload with jq"
 fi
