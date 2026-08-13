@@ -22,13 +22,11 @@ fi
 
 TOOL_NAME=$(printf '%s\n' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 if [[ "$TOOL_NAME" != "Task" ]]; then
-  echo '{"permission": "allow"}'
   exit 0
 fi
 
 SUBAGENT_TYPE=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || echo "")
 if [[ "$SUBAGENT_TYPE" != "advisor" ]]; then
-  echo '{"permission": "allow"}'
   exit 0
 fi
 
@@ -36,7 +34,6 @@ MODEL=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.model // empty' 2>/dev/null 
 MODEL_LC=$(printf '%s' "$MODEL" | tr '[:upper:]' '[:lower:]')
 case "$MODEL_LC" in
   *opus*|*grok*)
-    echo '{"permission": "allow"}'
     exit 0
     ;;
 esac
@@ -48,7 +45,7 @@ When invoking the `advisor` tool, select the `model` parameter from your availab
 - Use High-Thinking Claude-Opus for: Initial architectural plans, complex debugging, recurring errors, or deep refactoring.
 - Use High-Thinking Cursor-Grok (or cheaper available model) for: Simple logic checks, fast course corrections, or budget-conscious tasks per user preference.'
 
-if ! OUTPUT_JSON=$(jq -nc --arg m "$MSG" '{permission: "deny", agent_message: $m}' 2>/dev/null); then
+if ! OUTPUT_JSON=$(jq -nc --arg m "$MSG" '{permission: "deny", agent_message: $m, user_message: $m}' 2>/dev/null); then
   fail_open "Failed to construct deny JSON payload with jq"
 fi
 printf '%s\n' "$OUTPUT_JSON"

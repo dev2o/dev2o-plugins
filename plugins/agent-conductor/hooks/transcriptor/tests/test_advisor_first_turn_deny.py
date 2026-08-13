@@ -25,7 +25,7 @@ def _run(project_root: Path, payload: dict) -> dict:
         check=True,
         env=env,
     )
-    return json.loads(result.stdout)
+    return json.loads(result.stdout) if result.stdout.strip() else {"permission": "allow"}
 
 
 def _advisor_task() -> dict:
@@ -54,6 +54,7 @@ def test_deny_first_prompt(tmp_path: Path) -> None:
     out = _run(tmp_path, _advisor_task())
     assert out["permission"] == "deny"
     assert out["agent_message"] == DENY_MSG
+    assert out["user_message"] == DENY_MSG
 
 
 def test_deny_missing_transcript(tmp_path: Path) -> None:

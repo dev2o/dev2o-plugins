@@ -37,8 +37,13 @@
     ],
     "preToolUse": [
       {
-        "command": "${CURSOR_PLUGIN_ROOT}/hooks/context-injector/advisor-first-turn-deny.sh",
+        "command": "${CURSOR_PLUGIN_ROOT}/hooks/context-injector/subagent-context-pre-tool-use.sh",
         "matcher": "Task",
+        "timeout": 30
+      },
+      {
+        "command": "${CURSOR_PLUGIN_ROOT}/hooks/transcriptor/audit.sh",
+        "matcher": "Grep|Delete|Task",
         "timeout": 30
       },
       {
@@ -47,13 +52,8 @@
         "timeout": 30
       },
       {
-        "command": "${CURSOR_PLUGIN_ROOT}/hooks/context-injector/subagent-context-pre-tool-use.sh",
+        "command": "${CURSOR_PLUGIN_ROOT}/hooks/context-injector/advisor-first-turn-deny.sh",
         "matcher": "Task",
-        "timeout": 30
-      },
-      {
-        "command": "${CURSOR_PLUGIN_ROOT}/hooks/transcriptor/audit.sh",
-        "matcher": "Grep|Delete|Task",
         "timeout": 30
       }
     ],
