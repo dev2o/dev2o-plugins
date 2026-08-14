@@ -6,7 +6,31 @@ When the main agent spawns a subagent (Task tool, slash command, etc.), the hook
 
 ## Advisor (special case)
 
-`advisor` does **not** use `agent-advisor.md`. The hook resolves `{{CONVERSATION_ID}}` with the same token logic as other context files, runs `hooks/transcriptor/transcripts.py show <id>`, and sets the Task prompt to **only**:
+Neither `advisor` nor `exe-advisor` uses `agent-advisor.md`. Both always rewrite the Task prompt.
+
+### `advisor` (gatekeeper)
+
+Spawned by the Executor with prompt `Advise.` The hook resolves the executor conversation id (same token logic as other context files), runs `hooks/transcriptor/transcripts.py show <id> --last 10`, and sets the Task prompt to **only**:
+
+```
+The Executor agent has invoked you for strategic guidance.
+
+<inputs>
+- Conversation ID: <id>
+
+- RECENT_TRANSCRIPT:
+<last 10 user/assistant/tool events>
+</inputs>
+
+Apply your <evaluation_rules> to the <inputs> above.
+If a LEGITIMATE NEED is met, invoke the `exe-advisor` subagent with prompt exactly `CID:<id>` and the appropriate model. Otherwise, output the appropriate rejection message to return directly to the Executor.
+```
+
+The original Task prompt (`Advise.`) is dropped.
+
+### `exe-advisor` (Senior Advisor)
+
+Spawned only by the gatekeeper. The gatekeeper's Task prompt must be exactly `CID:<executor_conversation_id>`. The hook parses that string (not the nested hook `conversation_id`), runs `hooks/transcriptor/transcripts.py show <id>`, and sets the Task prompt to **only**:
 
 ```
 The Executor agent has paused its workflow. You must provide strategic oversight based on the transcript of its actions so far.
@@ -27,7 +51,7 @@ You are operating within the Cursor IDE. You have implicit access to the workspa
 </advisor_directives>
 ```
 
-The original Task prompt (`Advise.`) is dropped. If the id is unavailable or `show` fails, the same wrapper is used with `(conversation id unavailable)` inside `<execution_transcript>`.
+The `CID:` line is dropped. If the id is missing, malformed (`..` or `/`), or `show` fails, the same wrapper is used with `(conversation id unavailable)` inside `<execution_transcript>`.
 
 ## Adding context for a subagent
 
@@ -40,7 +64,7 @@ config/
   agent-{subagent_type}.md
 ```
 
-**No file → no injection** (hook returns `{ "permission": "allow" }`), except advisor, which always rewrites the prompt.
+**No file → no injection** (hook returns `{ "permission": "allow" }`), except `advisor` and `exe-advisor`, which always rewrite the prompt.
 
 ## Project overrides
 
@@ -85,6 +109,6 @@ make hooks-debug-on
 make hooks-debug-tail
 ```
 
-IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for advisor, when the transcript dump is present).
+IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for advisor / exe-advisor, when the rewritten prompt is present).
 
-If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that in `subagent-context-pre-tool-use.sh` — it prepends substituted context to the Task `prompt` before spawn (advisor: replaces the prompt with the transcript dump).
+If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that in `subagent-context-pre-tool-use.sh` — it prepends substituted context to the Task `prompt` before spawn (`advisor`: gatekeeper template; `exe-advisor`: full transcript dump).

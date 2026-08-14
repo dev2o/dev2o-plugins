@@ -82,6 +82,25 @@ build_subagent_context() {
 
 ID_UNAVAILABLE='(conversation id unavailable)'
 
+parse_exe_advisor_cid() {
+  local prompt="$1" cid
+  cid=$(printf '%s' "$prompt" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  case "$cid" in
+    CID:*)
+      cid="${cid#CID:}"
+      cid=$(printf '%s' "$cid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  if [[ -z "$cid" || "$cid" == *".."* || "$cid" == *"/"* ]]; then
+    return 1
+  fi
+  printf '%s' "$cid"
+  return 0
+}
+
 advisor_wrap_transcript() {
   local transcript="$1"
   cat <<'EOF'
@@ -136,6 +155,41 @@ advisor_injection_prompt() {
   fi
 
   advisor_wrap_transcript "$output"
+}
+
+advisor_gatekeeper_prompt() {
+  local lookup_conversation_id="$1" fallback_conversation_id="${2:-}" session_id="${3:-}"
+  local cid last_msgs transcripts_py
+
+  cid=$(substitute_subagent_tokens "$CONVERSATION_ID_TOKEN" "$lookup_conversation_id" "$fallback_conversation_id" "$session_id")
+  if [[ -z "$cid" || "$cid" == "$ID_UNAVAILABLE" || "$cid" == "$CONVERSATION_ID_TOKEN" ]]; then
+    cid="$ID_UNAVAILABLE"
+    last_msgs="$ID_UNAVAILABLE"
+  else
+    transcripts_py="${HOOKS_DIR}/../transcriptor/transcripts.py"
+    if [[ ! -f "$transcripts_py" ]] || ! command -v python3 >/dev/null 2>&1; then
+      last_msgs="$ID_UNAVAILABLE"
+    else
+      last_msgs=$(python3 "$transcripts_py" show "$cid" --last 10 2>/dev/null) || last_msgs=""
+      if [[ -z "$last_msgs" ]]; then
+        last_msgs="$ID_UNAVAILABLE"
+      fi
+    fi
+  fi
+
+  cat <<EOF
+The Executor agent has invoked you for strategic guidance.
+
+<inputs>
+- Conversation ID: ${cid}
+
+- RECENT_TRANSCRIPT:
+${last_msgs}
+</inputs>
+
+Apply your <evaluation_rules> to the <inputs> above.
+If a LEGITIMATE NEED is met, invoke the \`exe-advisor\` subagent with prompt exactly \`CID:${cid}\` and the appropriate model. Otherwise, output the appropriate rejection message to return directly to the Executor.
+EOF
 }
 
 is_cli_agent() {
