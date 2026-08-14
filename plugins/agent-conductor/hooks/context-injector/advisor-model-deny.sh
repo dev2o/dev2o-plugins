@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# UNUSED: not registered in hooks.json. Disabled so the gatekeeper prompt
+# can choose the exe-advisor model. Re-register if that approach fails.
 
 DUMP_DIR="/tmp/cursor-hook-debug"
 mkdir -p "$DUMP_DIR" 2>/dev/null || true
@@ -26,7 +28,7 @@ if [[ "$TOOL_NAME" != "Task" ]]; then
 fi
 
 SUBAGENT_TYPE=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || echo "")
-if [[ "$SUBAGENT_TYPE" != "advisor" ]]; then
+if [[ "$SUBAGENT_TYPE" != "exe-advisor" ]]; then
   exit 0
 fi
 
@@ -41,7 +43,7 @@ esac
 MSG='ERROR:  You must select a opus high thinking model or grok depending on the project.  see rules below, and then resubmit.
 
 MODEL SELECTION RULES:
-When invoking the `advisor` tool, select the `model` parameter from your available model list based on task severity:
+When invoking the `exe-advisor` tool, select the `model` parameter from your available model list based on task severity:
 - Use High-Thinking Claude-Opus for: Initial architectural plans, complex debugging, recurring errors, or deep refactoring.
 - Use High-Thinking Cursor-Grok (or cheaper available model) for: Simple logic checks, fast course corrections, or budget-conscious tasks per user preference.'
 
