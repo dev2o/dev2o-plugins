@@ -277,6 +277,23 @@ def test_show_negative_offset_tails(tmp_path: Path) -> None:
     assert "END OF USER TRANSCRIPT" in result.stdout
 
 
+def test_show_last_body_only_skips_thinking(tmp_path: Path) -> None:
+    events = (
+        [_prompt(f"prompt number {i}") for i in range(12)]
+        + [_thought("secret thought")]
+        + [_assistant("latest reply")]
+    )
+    _write_session(tmp_path, "sess-last", events)
+    result = _cli(tmp_path, "show", "sess-last", "--last", "10")
+    assert result.returncode == 0
+    assert "prompt number 3" in result.stdout
+    assert "prompt number 2" not in result.stdout
+    assert "latest reply" in result.stdout
+    assert "secret thought" not in result.stdout
+    assert "END OF USER TRANSCRIPT" not in result.stdout
+    assert result.stdout.strip().startswith("**User**")
+
+
 def test_show_short_truncates_full_does_not(tmp_path: Path) -> None:
     long_prompt = "x" * 500
     _write_session(tmp_path, "sess-big", [_prompt(long_prompt)])

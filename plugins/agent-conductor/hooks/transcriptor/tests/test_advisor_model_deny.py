@@ -23,8 +23,12 @@ def _run(payload: dict) -> dict:
     return json.loads(result.stdout) if result.stdout.strip() else {"permission": "allow"}
 
 
-def _advisor_task(**kwargs) -> dict:
-    tool_input = {"description": "Advise", "prompt": "Advise.", "subagent_type": "advisor"}
+def _exe_advisor_task(**kwargs) -> dict:
+    tool_input = {
+        "description": "Advise",
+        "prompt": "CID:959870a8-e0be-40e6-96ca-9ef9226cff13",
+        "subagent_type": "exe-advisor",
+    }
     tool_input.update(kwargs.pop("tool_input", {}))
     payload = {"tool_name": "Task", "tool_input": tool_input, "model": ""}
     payload.update(kwargs)
@@ -33,7 +37,7 @@ def _advisor_task(**kwargs) -> dict:
 
 
 def test_deny_empty_top_level_model() -> None:
-    out = _run(_advisor_task())
+    out = _run(_exe_advisor_task())
     assert out["permission"] == "deny"
     assert DENY_SNIPPET in out["agent_message"]
     assert DENY_SNIPPET in out["user_message"]
@@ -45,8 +49,8 @@ def test_deny_omitted_model() -> None:
             "tool_name": "Task",
             "tool_input": {
                 "description": "Advise",
-                "prompt": "Advise.",
-                "subagent_type": "advisor",
+                "prompt": "CID:959870a8-e0be-40e6-96ca-9ef9226cff13",
+                "subagent_type": "exe-advisor",
             },
         }
     )
@@ -54,23 +58,38 @@ def test_deny_omitted_model() -> None:
 
 
 def test_deny_inherit() -> None:
-    out = _run(_advisor_task(tool_input={"model": "inherit"}))
+    out = _run(_exe_advisor_task(tool_input={"model": "inherit"}))
     assert out["permission"] == "deny"
 
 
 def test_allow_opus_in_tool_input() -> None:
-    out = _run(_advisor_task(tool_input={"model": "claude-opus-5-thinking-high"}))
+    out = _run(_exe_advisor_task(tool_input={"model": "claude-opus-5-thinking-high"}))
     assert out["permission"] == "allow"
 
 
 def test_allow_grok_in_tool_input() -> None:
-    out = _run(_advisor_task(tool_input={"model": "cursor-grok-4.6-xhigh-fast"}))
+    out = _run(_exe_advisor_task(tool_input={"model": "cursor-grok-4.6-xhigh-fast"}))
     assert out["permission"] == "allow"
 
 
 def test_deny_parent_model_does_not_count() -> None:
-    out = _run(_advisor_task(model="claude-4.6-opus-high-thinking"))
+    out = _run(_exe_advisor_task(model="claude-4.6-opus-high-thinking"))
     assert out["permission"] == "deny"
+
+
+def test_allow_gatekeeper_advisor_without_model() -> None:
+    out = _run(
+        {
+            "tool_name": "Task",
+            "model": "",
+            "tool_input": {
+                "description": "Advise",
+                "prompt": "Advise.",
+                "subagent_type": "advisor",
+            },
+        }
+    )
+    assert out["permission"] == "allow"
 
 
 def test_allow_non_advisor_task() -> None:
