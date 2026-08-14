@@ -120,7 +120,7 @@ EOF
 1. Deduce the Objective: Read the earliest entries in the <execution_transcript> to identify the user's original goal.
 2. Analyze the State: Evaluate the Executor's recent steps and errors. Are they on the right track or stuck in a loop?
 3. Cross-Reference: Compare the transcript against your Cursor workspace context. Is the Executor making false assumptions about file structures or dependencies?
-4. Direct: Output your strategic guidance immediately. Tell the Executor exactly what to do next, which files to target, or why its current approach is failing.
+4. Direct: Based strictly on the conclusions from steps 1-3, formulate your strategic guidance. Tell the Executor exactly what to do next, which files to target, or why its current approach is failing.
 </advisor_directives>
 EOF
 }
