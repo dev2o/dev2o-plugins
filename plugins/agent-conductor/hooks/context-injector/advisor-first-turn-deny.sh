@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# UNUSED: not registered in hooks.json. Disabled so the gatekeeper
+# can decide whether a first-turn advisor call is premature. Re-register if that approach fails.
 
 DUMP_DIR="/tmp/cursor-hook-debug"
 mkdir -p "$DUMP_DIR" 2>/dev/null || true

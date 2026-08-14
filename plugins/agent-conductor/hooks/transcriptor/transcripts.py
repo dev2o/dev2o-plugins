@@ -10,7 +10,7 @@ manager. The PEP 723 metadata block above declares zero dependencies, so
 `uv run` (or any PEP 723 runner) still works, but is not required — the
 plain `python3` shebang avoids dying in sandboxes that lack uv.
 
-UPDATED: 2026-08-13
+UPDATED: 2026-08-14
 """
 
 from __future__ import annotations
@@ -631,20 +631,40 @@ def cmd_show(args: argparse.Namespace) -> int:
 
     only = _parse_only(args.only)
     events, skipped = load_transcript(path)
+    last_n = args.last
+    if last_n is not None and last_n < 1:
+        last_n = None
     if args.json:
-        for ev in events:
-            if only and category_for(ev) not in only:
-                continue
+        if last_n is not None and only is None:
+            only = {"user", "assistant", "tool"}
+        selected = [ev for ev in events if not only or category_for(ev) in only]
+        if last_n is not None:
+            selected = selected[-last_n:]
+        for ev in selected:
             print(json.dumps(ev, ensure_ascii=False))
         if skipped:
             print(f"# skipped {skipped} malformed line(s)", file=sys.stderr)
         return 0
 
     hide_thinking = not args.full and (only is None or "thinking" not in only)
+    if last_n is not None and only is None:
+        only = {"user", "assistant", "tool"}
+        hide_thinking = True
     indexed = _filter_indexed(events, only, hide_thinking)
     short = bool(args.short)
     paging = args.offset is not None or args.limit is not None
     cid = args.conversation_id
+
+    if last_n is not None:
+        page = indexed[-last_n:]
+        blocks = render_blocks(page, short=short)
+        texts = [b.text for b in blocks]
+        body = BLOCK_SEP.join(texts)
+        if body:
+            print(body)
+        if skipped:
+            print(f"# skipped {skipped} malformed line(s)", file=sys.stderr)
+        return 0
 
     _print_show_header(cid, events)
 
@@ -773,6 +793,13 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="Skip first N matching events; negative = from the end (enables paging mode)",
+    )
+    show_p.add_argument(
+        "--last",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Last N user/assistant/tool events; body only (no header/footer)",
     )
     show_p.add_argument("--json", action="store_true", help="Output raw JSON lines")
     show_p.set_defaults(func=cmd_show)

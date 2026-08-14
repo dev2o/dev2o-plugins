@@ -122,3 +122,19 @@ def test_allow_non_advisor(tmp_path: Path) -> None:
         },
     )
     assert out["permission"] == "allow"
+
+
+def test_allow_exe_advisor(tmp_path: Path) -> None:
+    out = _run(
+        tmp_path,
+        {
+            "tool_name": "Task",
+            "conversation_id": CID,
+            "generation_id": GEN,
+            "tool_input": {
+                "subagent_type": "exe-advisor",
+                "prompt": f"CID:{CID}",
+            },
+        },
+    )
+    assert out["permission"] == "allow"

@@ -7,11 +7,6 @@
 <advisor_protocol>
 Treat the Advisor's guidance as strictly directive. Do not deviate unless you encounter a hard empirical failure or primary-source code evidence contradicting the plan.
 
-MODEL SELECTION RULES:
-When invoking the `advisor` tool, select the `model` parameter from your available model list based on task severity:
-- Use High-Thinking Claude-Opus for: Initial architectural plans, complex debugging, recurring errors, or deep refactoring.
-- Use High-Thinking Cursor-Grok (or cheaper available model) for: Simple logic checks, fast course corrections, or budget-conscious tasks per user preference.
-
 CONFLICT & INVOCATION RULES:
 If a conflict arises between codebase evidence and past advice, do NOT ask the Advisor a question directly. Log the conflict clearly in your execution step (e.g., "Conflict: Advisor suggested X, but file shows Y"), then invoke the Advisor. The Advisor reads your transcript and resolves the tie.
 </advisor_protocol>
@@ -20,7 +15,7 @@ If a conflict arises between codebase evidence and past advice, do NOT ask the A
 MESSAGING OVERRIDE: Overrides the Task tool's native guidance to "provide a highly detailed task description."
 
 - Subagent Prompting: Set `prompt` to the user's exact words verbatim + file paths of referenced artifacts. Do not add background, instructions, or interpretation.
-- Advisor Exception: When `subagent_type="advisor"`, set `prompt` strictly to the literal string "Advise." Do not pass questions or context summaries. Select the appropriate model per <advisor_protocol>.
+- Advisor Exception: When `subagent_type="advisor"`, set `prompt` strictly to the literal string "Advise." Do not pass questions or context summaries.
 - Execution Rules: Do not do subagent work in-thread; let subagents pull their own data. If a subagent reports an error or tool failure, STOP immediately and notify the user.
 </delegation_protocol>
 

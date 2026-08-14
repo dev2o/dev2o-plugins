@@ -47,10 +47,23 @@ SESSION_ID=$(printf '%s\n' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null |
 ORIG_PROMPT=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null || echo "")
 
 if [[ "$SUBAGENT_TYPE" == "advisor" ]]; then
+  if ! command -v advisor_gatekeeper_prompt >/dev/null 2>&1; then
+    fail_open "Function 'advisor_gatekeeper_prompt' not found after sourcing $CONTEXT_LIB"
+  fi
+  NEW_PROMPT=$(advisor_gatekeeper_prompt "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
+  if [[ -z "$NEW_PROMPT" ]]; then
+    echo "$(date -u): FAILED (preToolUse) - advisor_gatekeeper_prompt returned empty" >> "$DUMP_DIR/error.log"
+    NEW_PROMPT=$(advisor_gatekeeper_prompt "" "" "" 2>/dev/null || echo "")
+  fi
+elif [[ "$SUBAGENT_TYPE" == "exe-advisor" ]]; then
   if ! command -v advisor_injection_prompt >/dev/null 2>&1; then
     fail_open "Function 'advisor_injection_prompt' not found after sourcing $CONTEXT_LIB"
   fi
-  NEW_PROMPT=$(advisor_injection_prompt "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
+  EXECUTOR_CID=""
+  if command -v parse_exe_advisor_cid >/dev/null 2>&1; then
+    EXECUTOR_CID=$(parse_exe_advisor_cid "$ORIG_PROMPT" 2>/dev/null || echo "")
+  fi
+  NEW_PROMPT=$(advisor_injection_prompt "$EXECUTOR_CID" "" "" 2>/dev/null || echo "")
   if [[ -z "$NEW_PROMPT" ]]; then
     echo "$(date -u): FAILED (preToolUse) - advisor_injection_prompt returned empty" >> "$DUMP_DIR/error.log"
     NEW_PROMPT=$(advisor_wrap_transcript "$ID_UNAVAILABLE")
