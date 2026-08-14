@@ -181,10 +181,10 @@ advisor_gatekeeper_prompt() {
 The Executor agent has invoked you for strategic guidance.
 
 <inputs>
-- Conversation ID: ${cid}
-
-- RECENT_TRANSCRIPT:
+  <conversation_id>${cid}</conversation_id>
+  <recent_transcript>
 ${last_msgs}
+  </recent_transcript>
 </inputs>
 
 Apply your <evaluation_rules> to the <inputs> above.

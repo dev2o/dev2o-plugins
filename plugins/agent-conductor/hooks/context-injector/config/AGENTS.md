@@ -16,10 +16,10 @@ Spawned by the Executor with prompt `Advise.` The hook resolves the executor con
 The Executor agent has invoked you for strategic guidance.
 
 <inputs>
-- Conversation ID: <id>
-
-- RECENT_TRANSCRIPT:
-<last 10 user/assistant/tool events>
+  <conversation_id>{transcript_id}</conversation_id>
+  <recent_transcript>
+{last_10_messages}
+  </recent_transcript>
 </inputs>
 
 Apply your <evaluation_rules> to the <inputs> above.

@@ -101,9 +101,9 @@ def test_gatekeeper_prompt_has_id_and_last_messages(tmp_path: Path) -> None:
     _write_transcript(tmp_path, REAL_ID)
     out = _gatekeeper_prompt(tmp_path, REAL_ID)
     assert "The Executor agent has invoked you for strategic guidance." in out
-    assert f"- Conversation ID: {REAL_ID}" in out
+    assert f"<conversation_id>{REAL_ID}</conversation_id>" in out
     assert "<inputs>" in out
-    assert "RECENT_TRANSCRIPT:" in out
+    assert "<recent_transcript>" in out
     assert MARKER in out
     assert f"CID:{REAL_ID}" in out
     assert "exe-advisor" in out
@@ -124,7 +124,7 @@ def test_hook_advisor_injects_gatekeeper_template(tmp_path: Path) -> None:
     )
     prompt = data["updated_input"]["prompt"]
     assert data["permission"] == "allow"
-    assert f"- Conversation ID: {REAL_ID}" in prompt
+    assert f"<conversation_id>{REAL_ID}</conversation_id>" in prompt
     assert MARKER in prompt
     assert "Advise." not in prompt
     assert "<execution_transcript>" not in prompt
