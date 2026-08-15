@@ -1,5 +1,6 @@
 ---
 name: advisor
+model: composer-2.5[fast=false]
 description: "High-tier reasoning specialist for strategic guidance, complex problem-solving, and course-correction. Use when stuck, facing recurring errors, or designing complex logic. Pass prompt strictly as 'Advise.'"
 readonly: true
 is_background: false
