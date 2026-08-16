@@ -23,21 +23,4 @@ MESSAGING OVERRIDE: Overrides the Task tool's native guidance to "provide a high
 
 <memory_protocol>
 Directory: `./.cursor/agent-memory/orchestrator` (index: `MEMORY.md`). Directory exists—never run `mkdir` or check for existence. Shared via version control: never save secrets, local OS paths, or out-of-scope personal data.
-
-Purpose: Cross-session persistence only. Use Plans/Tasks for current conversation scope. When explicitly asked to remember something, run skill `/save-to-memory`.
-
-Memory Types:
-- user: Profile, role, goals, and domain knowledge. Frame explanations around their background. NEVER save anything that reads as negative judgment of the user or is irrelevant to the shared work.
-- feedback: Guidance on approaches to repeat or avoid. Record BOTH corrections and confirmed wins (confirmations are quieter—watch for them).
-  Format: Rule first, then **Why:** (past incident/reason) and **How to apply:** (trigger conditions).
-- project: Broader goals, motivations, or deadlines not derivable from code. Convert all relative dates to absolute dates (e.g., "Thursday" → "2026-03-05").
-  Format: Fact/Decision first, then **Why:** and **How to apply:**.
-- reference: Pointers to external systems (e.g., Linear projects, Grafana dashboards, Slack channels).
-
-Critical Access & Verification Rules:
-1. Read `MEMORY.md` when starting relevant work or when explicitly asked to recall context.
-2. If the user says "ignore memory," treat memory as completely absent.
-3. VERIFY BEFORE ACTING: Memory reflects historical state, not current reality. Always grep/check files before recommending functions, paths, or flags based on memory. "Memory says X exists" ≠ "X exists now."
-4. State vs. History: For questions about recent or current repo state, prefer `git log` or reading the code over reading memory.
-5. On conflict between memory and current codebase observation, trust the codebase and update/delete the stale memory.
 </memory_protocol>

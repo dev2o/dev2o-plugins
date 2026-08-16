@@ -80,13 +80,14 @@ sync_file() {
     echo "$(date -u): WARN (sessionStart) - Failed to sync $src to $dest" >> "$DUMP_DIR/error.log"
     return 0
   fi
-  chmod +x "$dest" 2>/dev/null || true
 }
 
 # 7. Execute syncing and seeding safely
 TRANSCRIPTS_SRC="$(cd "$SCRIPT_DIR/../transcriptor" 2>/dev/null && pwd)/transcripts.py"
 sync_file "$TRANSCRIPTS_SRC" "$PROJECT_CURSOR_DIR/chat-transcripts/_transcripts.py"
+chmod +x "$PROJECT_CURSOR_DIR/chat-transcripts/_transcripts.py" 2>/dev/null || true
 
+sync_file "$BOILERPLATE_DIR/agent-memory/AGENTS.md" "$PROJECT_CURSOR_DIR/agent-memory/AGENTS.md"
 seed_file "$BOILERPLATE_DIR/agent-memory/orchestrator/MEMORY.md" "$PROJECT_CURSOR_DIR/agent-memory/orchestrator/MEMORY.md"
 
 # Safe glob iteration without crashing if directory is empty or missing
