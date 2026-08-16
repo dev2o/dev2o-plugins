@@ -44,19 +44,21 @@ On `sessionStart`, the plugin copies boilerplate into the project under `.cursor
 
 | Plugin source | Project destination | Behavior |
 |---------------|---------------------|----------|
-| `boilerplate/agent-memory/` | `.cursor/agent-memory/` | **Seed** — copied only if the destination file does not exist |
+| `boilerplate/agent-memory/AGENTS.md` | `.cursor/agent-memory/AGENTS.md` | **Sync** — overwritten on every session start |
+| `boilerplate/agent-memory/orchestrator/MEMORY.md` | `.cursor/agent-memory/orchestrator/MEMORY.md` | **Seed** — copied only if the destination file does not exist |
 | `boilerplate/chat-transcripts/` | `.cursor/chat-transcripts/` | **Seed** — docs and ignore rules copied only if missing |
 | `hooks/transcriptor/transcripts.py` | `.cursor/chat-transcripts/_transcripts.py` | **Sync** — overwritten on every session start |
 
 ### `agent-memory`
 
-Cross-session persistence for the orchestrator. Seeded once:
+Cross-session persistence for the orchestrator:
 
 ```
-.cursor/agent-memory/orchestrator/MEMORY.md
+.cursor/agent-memory/AGENTS.md              ← synced from plugin; do not edit
+.cursor/agent-memory/orchestrator/MEMORY.md ← seeded once; edit this in your project
 ```
 
-Edit this file in your project; the plugin will not overwrite it once it exists.
+`AGENTS.md` is overwritten on every session start so plugin updates to memory rules land automatically. `MEMORY.md` is seeded once; the plugin will not overwrite it once it exists.
 
 ### `chat-transcripts`
 
