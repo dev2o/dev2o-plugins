@@ -103,6 +103,22 @@ def test_launcher_forwards_the_task_stamp(tmp_path: Path) -> None:
     assert out["updated_input"]["prompt"] == f"Advise. {REAL_ID}"
 
 
+def test_launcher_stays_silent_when_a_capture_hook_answers_nothing(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    _install_plugin(home)
+    dump = Path("/tmp/cursor-hook-debug/error.log")
+    before = dump.read_text(encoding="utf-8") if dump.is_file() else ""
+    result = _run(
+        AUDIT,
+        {"conversation_id": REAL_ID, "hook_event_name": "afterAgentResponse", "text": "quiet"},
+        tmp_path,
+        home,
+    )
+    assert json.loads(result.stdout) == {}
+    after = dump.read_text(encoding="utf-8") if dump.is_file() else ""
+    assert "cloud launcher" not in after[len(before) :]
+
+
 def test_launcher_fails_open_without_an_installed_plugin(tmp_path: Path) -> None:
     result = _run(
         AUDIT,

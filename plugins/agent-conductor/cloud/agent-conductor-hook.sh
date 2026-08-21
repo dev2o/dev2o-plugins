@@ -12,9 +12,7 @@ mkdir -p "$DUMP_DIR" 2>/dev/null || true
 
 INPUT=$(cat 2>/dev/null || echo "")
 
-fail_open() {
-  local reason="$1"
-  echo "$(date -u): FAILED (cloud launcher) - $reason" >> "$DUMP_DIR/error.log"
+default_payload() {
   local event=""
   if command -v jq >/dev/null 2>&1; then
     event=$(printf '%s\n' "$INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null || echo "")
@@ -25,10 +23,29 @@ fail_open() {
     *)
       echo '{}' ;;
   esac
+}
+
+fail_open() {
+  local reason="$1"
+  echo "$(date -u): FAILED (cloud launcher) - $reason" >> "$DUMP_DIR/error.log"
+  default_payload
   exit 0
 }
 
 TARGET="${1:-}"
+
+# One line per dispatch. This is the only record of which events a cloud agent
+# actually delivers, since the events themselves are invisible from the session.
+{
+  event=""
+  if command -v jq >/dev/null 2>&1; then
+    event=$(printf '%s\n' "$INPUT" | jq -r '.hook_event_name // "?"' 2>/dev/null || echo "?")
+  fi
+  printf '%s event=%s target=%s cursor_agent=%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${event:-?}" "${TARGET:-none}" "${CURSOR_AGENT:-unset}" \
+    >> "$DUMP_DIR/cloud-launcher.log"
+} 2>/dev/null
+
 [[ -n "$TARGET" ]] || fail_open "No plugin script argument"
 [[ -n "$INPUT" ]] || fail_open "Received empty stdin"
 command -v jq >/dev/null 2>&1 || fail_open "'jq' is not installed in PATH: $PATH"
@@ -68,7 +85,11 @@ if [[ -n "${CURSOR_PROJECT_DIR:-}" ]]; then
 fi
 
 OUTPUT=$(printf '%s\n' "$INPUT" | bash "$SCRIPT" 2>/dev/null)
-[[ -n "$OUTPUT" ]] || fail_open "No output from $SCRIPT"
+STATUS=$?
+[[ "$STATUS" -eq 0 ]] || fail_open "$SCRIPT exited $STATUS"
+
+# The capture hooks answer with nothing at all, which is not a failure.
+[[ -n "$OUTPUT" ]] || { default_payload; exit 0; }
 
 printf '%s\n' "$OUTPUT"
 exit 0
