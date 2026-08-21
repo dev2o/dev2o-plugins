@@ -1,6 +1,6 @@
 # Agent Conductor
 
-**Give your main agent a standing prompt that goes to it and no other agent.**
+**Every instruction you write reaches every agent you run. These reach the one you meant.**
 
 Cursor has two places for instructions that apply on every turn, a rule with `alwaysApply` and an `AGENTS.md`. Both are broadcasts. The agent you are talking to reads them. So does every subagent it spawns.
 
@@ -204,8 +204,10 @@ Default show hides thinking; see the footer for optional flags.
 
 | Scrubbed | Detail |
 | --- | --- |
-| Known token formats | `sk-`, `ghp_`, `gho_`, `gha_`, `github_pat_`, `xoxb-` and friends, `ops_`, JWTs |
-| Assignments that name a secret | any `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*API*` variable, value replaced with `[REDACTED]` |
+| Known token formats | `crsr_` (Cursor), `sk-` (OpenAI and Anthropic), `sk_live_` and `rk_live_` (Stripe), `ghp_`, `gho_`, `gha_`, `ghr_`, `ghs_`, `ghu_`, `github_pat_`, `npm_`, `xoxb-` and friends, `ops_`, `AKIA` and `ASIA` (AWS key ids), `AIza` (Google), JWTs |
+| Assignments that name a secret | any `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*API*` variable, plus lowercase `password=`, value replaced with `[REDACTED]` |
+| Syntax that carries a credential | `Authorization: Bearer`, `Basic` and `token` headers, `--token`, `--api-key`, `--secret` and `--password` style flags, `-u user:password`, and `user:password@host` inside any URL |
+| Private keys | the body of any `-----BEGIN ... PRIVATE KEY-----` block |
 | Fields scanned for secrets | strings nested under `command`, `prompt`, `tool_input`, `tool_output`, `output`, `text`, and `error_message` |
 | File contents | `content` dropped from `beforeReadFile`; `old_string` and `new_string` dropped from `afterFileEdit` edits and top-level `preToolUse` tool input |
 | Read and fetch tool output | replaced with a placeholder |
@@ -213,7 +215,9 @@ Default show hides thinking; see the footer for optional flags.
 | Local identifiers | `session_id`, `workspace_roots` and `transcript_path` deleted, `user_email` cut to the part before the `@` |
 | Long strings | capped at 16384 characters |
 
-Redaction runs recursively over the fields listed above, so matching secrets in shell commands, user prompts, and nested tool arguments are replaced without removing the surrounding text. Other tool argument keys can still carry file bodies, fields outside that list are not scanned, and sensitive text that does not match a known pattern survives. The raw payload dumps under `/tmp/cursor-hook-debug` are also unsanitized. Read each transcript before you commit it.
+Redaction runs recursively over the fields listed above, so matching secrets in shell commands, user prompts, and nested tool arguments are replaced without removing the surrounding text. The rules are deliberately narrow, because a filter that shreds ordinary code and prose destroys the transcript's value as the advisor's only input.
+
+That narrowness has a cost, and these are the shapes known to survive. A token whose prefix is not in the table above and that is not introduced by one of the syntax forms, so a bare vendor key pasted into a prompt on its own. A URL that is itself the credential, such as a Slack incoming webhook or a Sentry DSN. A password glued to a single-letter flag, as in `mysql -pSecret`, because `-p` means port or parents nearly everywhere else. An all-numeric password after `-u user:`, which is skipped so that `docker run -u 1000:1000` survives. Public key material is left alone on purpose, since `ssh-rsa` lines are meant to be shared. Other tool argument keys can still carry file bodies, fields outside the list above are not scanned, and the raw payload dumps under `/tmp/cursor-hook-debug` are unsanitized. Read each transcript before you commit it.
 
 Two things narrow the blast radius. A shipped `.cursorignore` stops agents from reading the `.jsonl` files directly. `beforeShellExecution` denies commands whose job is dumping the environment, meaning `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`. Read that second one as a guardrail rather than a boundary, since it matches command shapes and an agent that wants the file badly enough can spell the read another way.
 

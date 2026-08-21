@@ -11,7 +11,7 @@
     {
       "name": "agent-conductor",
       "source": "plugins/agent-conductor",
-      "description": "Give your main agent a standing prompt that goes to it and no other agent. One instruction file per role, in the Cursor IDE and on Cloud Agents."
+      "description": "Every Cursor instruction you write reaches every agent you run. This gives each role a file only it reads, in the IDE and on Cloud Agents."
     }
   ]
 }

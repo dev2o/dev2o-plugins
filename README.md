@@ -1,10 +1,10 @@
 # Agent Conductor
 
-**Give your main agent a standing prompt that goes to it and no other agent.**
+**Every instruction you write reaches every agent you run. These reach the one you meant.**
 
 Cursor has two places for instructions that apply on every turn, an `AGENTS.md` and an always-on rule. Both are broadcasts. Put "delegate all implementation to a subagent, never write code in this thread" in either one and the agent you are talking to obeys it. So does every subagent it spawns. Your workers delegate instead of working, and nothing gets built.
 
-Agent Conductor addresses each instruction to one role. The agent you are chatting with reads `__agent-main.md`, and nothing else does. Add `agent-explore.md` and `explore` subagents read that one when they spawn. A role you never write a file for is sent nothing at all.
+Agent Conductor gives each role a file of its own. Subagents read `agent-<type>.md`, so `explore` reads `agent-explore.md`. The agent you are chatting with reads the reserved `__agent-main.md`, and no subagent ever does. A role you write no file for is sent nothing at all.
 
 ![A broadcast rule reaches every agent, so the workers delegate too. Agent Conductor addresses one file per role, so the workers work.](plugins/agent-conductor/docs/addressed-context.png)
 
