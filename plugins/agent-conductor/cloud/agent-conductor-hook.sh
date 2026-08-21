@@ -76,7 +76,14 @@ plugin_root() {
   return 1
 }
 
-PLUGIN_ROOT=$(plugin_root) || fail_open "No installed agent-conductor plugin under $HOME/.cursor/plugins/cache"
+# The override exists so this repository can test its own working tree on a
+# cloud VM, where the installed copy is whatever landed on the marketplace ref.
+if [[ -n "${AGENT_CONDUCTOR_PLUGIN_ROOT:-}" ]]; then
+  PLUGIN_ROOT="$AGENT_CONDUCTOR_PLUGIN_ROOT"
+  [[ -d "$PLUGIN_ROOT/hooks" ]] || fail_open "AGENT_CONDUCTOR_PLUGIN_ROOT has no hooks directory: $PLUGIN_ROOT"
+else
+  PLUGIN_ROOT=$(plugin_root) || fail_open "No installed agent-conductor plugin under $HOME/.cursor/plugins/cache"
+fi
 
 SCRIPT="$PLUGIN_ROOT/$TARGET"
 [[ -f "$SCRIPT" ]] || fail_open "Plugin script missing at $SCRIPT"

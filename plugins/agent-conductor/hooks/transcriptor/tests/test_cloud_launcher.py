@@ -125,6 +125,33 @@ def test_launcher_stays_silent_when_a_capture_hook_answers_nothing(tmp_path: Pat
     assert "cloud launcher" not in after[len(before) :]
 
 
+def test_launcher_honors_a_working_tree_override(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    _cloud_without_plugin(home)
+    env = os.environ.copy()
+    env["HOME"] = str(home)
+    env["CURSOR_PROJECT_DIR"] = str(tmp_path)
+    env["AGENT_CONDUCTOR_PLUGIN_ROOT"] = str(REPO_ROOT)
+    result = subprocess.run(
+        ["bash", str(LAUNCHER), AUDIT],
+        input=json.dumps(
+            {
+                "conversation_id": REAL_ID,
+                "hook_event_name": "beforeSubmitPrompt",
+                "prompt": "captured from the working tree",
+            }
+        ),
+        cwd=str(tmp_path),
+        text=True,
+        capture_output=True,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 0
+    log = tmp_path / ".cursor" / "chat-transcripts" / f"{REAL_ID}.jsonl"
+    assert "captured from the working tree" in log.read_text(encoding="utf-8")
+
+
 def test_launcher_does_nothing_on_desktop(tmp_path: Path) -> None:
     # Desktop loads the plugin's own hooks, so dispatching here would double-fire.
     home = tmp_path / "home"

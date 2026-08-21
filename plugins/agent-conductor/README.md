@@ -115,7 +115,16 @@ This repository installs the launcher on itself, so a cloud agent started here e
 plugins/agent-conductor/cloud/verify-cloud-hooks.sh
 ```
 
-It reports whether any hook ran, which events reached the launcher, whether the CLI was synced, whether this session was captured, and prints the resulting brief. `/tmp/cursor-hook-debug/cloud-launcher.log` holds one line per dispatch, which is the only record of which events a cloud agent actually delivers.
+It reports whether any hook ran, which events reached the launcher, whether the CLI was synced, whether this session was captured, and prints the resulting brief.
+
+By default the launcher dispatches to the installed plugin, which is whatever landed on the marketplace ref. To exercise an unreleased working tree instead, set `AGENT_CONDUCTOR_PLUGIN_ROOT`:
+
+```bash
+AGENT_CONDUCTOR_PLUGIN_ROOT="$PWD/plugins/agent-conductor" \
+  .cursor/hooks/agent-conductor-hook.sh hooks/transcriptor/audit.sh <<'JSON'
+{"conversation_id": "probe", "hook_event_name": "afterAgentResponse", "text": "working tree"}
+JSON
+``` `/tmp/cursor-hook-debug/cloud-launcher.log` holds one line per dispatch, which is the only record of which events a cloud agent actually delivers.
 
 The line to watch is `preToolUse on Task`. If it never reaches the stamping hook, the Executor's own `Advise. <id>` stamp is carrying the transport by itself, which is the case the fallback exists for.
 
