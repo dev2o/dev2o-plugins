@@ -1,135 +1,198 @@
-# Cursor Agent Conductor
+# Agent Conductor
 
-Project-level overrides for hook-injected context. Bundled defaults live in the plugin; a project can replace them file-by-file without forking the plugin.
+**Standing instructions for one Cursor agent, not for all of them.**
 
----
+Cursor gives you two places to put instructions that should apply on every turn: a rule with `alwaysApply`, or an `AGENTS.md`. Both go to every agent in the workspace. The agent you are talking to reads them. So does every subagent it spawns.
 
-## Project config overrides
+That breaks as soon as you use subagents. Write "delegate implementation to a subagent, never write code in this thread" and your workers read it too, so they delegate instead of working. Write "you are the orchestrator" and five agents believe it at once.
 
-Place override files under your project root at:
+Agent Conductor gives each role its own file.
 
+![How Agent Conductor routes context, compared with a broadcast rule](docs/addressed-context.svg)
+
+| File | Who reads it | When it arrives |
+| --- | --- | --- |
+| `__agent-main.md` | the agent you are chatting with, and nothing else | before every prompt you submit |
+| `agent-explore.md` | subagents of type `explore` | when the agent spawns one |
+| `agent-{subagent_type}.md` | subagents of that exact type | when the agent spawns one |
+
+No file for a role means nothing is sent to that role. The `agent-` prefix is fixed and the suffix is the subagent type verbatim, so `explore` needs `agent-explore.md`.
+
+## The main agent's copy never lands in the thread
+
+`__agent-main.md` is read from disk and handed over on each submission as hook context. It is not a message in your conversation, so it does not pile up turn after turn, and nothing stale sits behind the current copy.
+
+![The same instructions on every turn without filling the thread](docs/thread-cost.svg)
+
+Edit the file and the next prompt uses the new text. That is the part people notice first: you can iterate on the orchestrator's instructions mid-conversation without restarting the chat or scrolling past six copies of your own boilerplate.
+
+## Install
+
+The plugin needs `jq` and `python3` on `PATH`.
+
+**From this repo, locally.** Clone it and link the plugin into Cursor's local plugin directory, then run **Developer: Reload Window**.
+
+```bash
+git clone https://github.com/dev2o/dev2o-plugins.git
+ln -s "$PWD/dev2o-plugins/plugins/agent-conductor" ~/.cursor/plugins/local/agent-conductor
 ```
-.cursor/dev2o-agent-conductor/config/
+
+**As a team marketplace.** Open **Dashboard -> Plugins**, click **Add Marketplace**, choose **Import from Repo**, and give it `https://github.com/dev2o/dev2o-plugins`. Teammates then install Agent Conductor from **Customize**.
+
+Cloud Agents need one extra step, because Cursor loads cloud hooks only from the project's own `.cursor/hooks.json`. See [Cloud Agents](docs/cloud-agents.md).
+
+## Write your first orchestrator prompt
+
+The plugin ships a default `__agent-main.md`. Override it in your project, per file, without forking anything.
+
+1. Create the override and put a line in it you will recognize.
+
+```bash
+mkdir -p .cursor/dev2o-agent-conductor/config
+cat > .cursor/dev2o-agent-conductor/config/__agent-main.md <<'MD'
+<orchestrator_rules>
+- Delegate every implementation task to a subagent. Do not edit files in this thread.
+- Codename for this project is BLUE HERON.
+</orchestrator_rules>
+MD
 ```
 
-Resolution uses `CURSOR_PROJECT_DIR`. A project file wins over the plugin's bundled copy; resolution is **per file** — only the files you add are overridden.
+2. Open a new chat and send any prompt.
 
+3. Ask the agent for the codename. It answers BLUE HERON, because the hook handed it the file. Now spawn a subagent and ask it the same question. It has never heard of BLUE HERON, and it edits files instead of delegating.
 
-| File                       | Injected to                                        |
-| -------------------------- | -------------------------------------------------- |
-| `__agent-main.md`          | Main agent (`beforeSubmitPrompt`)                  |
-| `agent-{subagent_type}.md` | Subagent matching that type (`preToolUse` on Task) |
+That contrast is the whole product.
 
+4. Check what the hook decided, one line per prompt.
 
-Examples:
-
+```bash
+cat /tmp/cursor-hook-debug/registry/inject-decisions.log
 ```
+
+```text
+2026-08-21T17:40:04Z cid=bc-09cb2003-0d36-4d08-a80a-60b84652afe2 decision=inject reason=main agent
+2026-08-21T17:49:05Z cid=bc-88f10553-634d-5685-8875-321949cf44f1 decision=skip reason=prompt matches a recorded spawn
+```
+
+The second line is a subagent being kept out. Telling a child apart from its parent is harder than it sounds, and on a Cloud Agent it is genuinely hard: a spawned child arrives with a fresh `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`, which is exactly what a main agent looks like. Three signals settle it, in order. The payload names the child when it can. `subagentStart` carries the child's own id. Failing both, the spawn hook already knows the exact prompt each child will receive, so the inject hook skips a prompt it recognizes and remembers that conversation id for later turns.
+
+Unknown sessions get injected. A broken registry costs you subagent isolation, not the orchestrator's instructions.
+
+## Configuration
+
+Project overrides live under your project root:
+
+```text
 .cursor/dev2o-agent-conductor/config/
   __agent-main.md
   agent-advisor.md
   agent-explore.md
 ```
 
-The `agent-` prefix is fixed; the suffix must match the subagent type exactly (e.g. `advisor` → `agent-advisor.md`).
+Resolution is per file, against `CURSOR_PROJECT_DIR`. A project file wins over the plugin's bundled copy, and the files you do not override keep the bundled default. Bundled defaults live in [`hooks/context-injector/config/`](hooks/context-injector/config/).
 
-**No override file → plugin default.** No plugin default and no override → no injection for that agent.
+Subagent files may use two tokens, substituted at spawn time only when present:
 
-Bundled defaults: [`hooks/context-injector/config/`](hooks/context-injector/config/)
+| Token | Replaced with |
+| --- | --- |
+| `{{CONVERSATION_ID}}` | the parent's conversation id, preferring one that has a captured transcript |
+| `{{PROJECT_DIR}}` | absolute project root |
 
----
+The main agent's context is capped at 9000 characters. Past that the hook injects a warning instead, so a runaway file is loud rather than silent.
 
-## Project folders seeded on session start
+### What the plugin puts in your project
 
-On `sessionStart`, the plugin copies boilerplate into the project under `.cursor/`. Source files live in [`boilerplate/`](boilerplate/).
+On `sessionStart` the plugin copies boilerplate into `.cursor/`. Two of those files are overwritten every time, so plugin updates reach you without a merge. The two that are yours to edit are copied once and then left alone.
 
-| Plugin source | Project destination | Behavior |
-|---------------|---------------------|----------|
-| `boilerplate/agent-memory/AGENTS.md` | `.cursor/agent-memory/AGENTS.md` | **Sync** — overwritten on every session start |
-| `boilerplate/agent-memory/orchestrator/MEMORY.md` | `.cursor/agent-memory/orchestrator/MEMORY.md` | **Seed** — copied only if the destination file does not exist |
-| `boilerplate/chat-transcripts/` | `.cursor/chat-transcripts/` | **Seed** — docs and ignore rules copied only if missing |
-| `hooks/transcriptor/transcripts.py` | `.cursor/chat-transcripts/_transcripts.py` | **Sync** — overwritten on every session start |
+| Plugin source | Project destination | On every session start |
+| --- | --- | --- |
+| `boilerplate/agent-memory/AGENTS.md` | `.cursor/agent-memory/AGENTS.md` | overwritten |
+| `hooks/transcriptor/transcripts.py` | `.cursor/chat-transcripts/_transcripts.py` | overwritten |
+| `boilerplate/agent-memory/orchestrator/MEMORY.md` | `.cursor/agent-memory/orchestrator/MEMORY.md` | written once, then yours |
+| `boilerplate/chat-transcripts/` | `.cursor/chat-transcripts/` | written once, then yours |
 
-### `agent-memory`
+A Cloud Agent never runs `sessionStart`, so the launcher syncs `_transcripts.py` on the first hook that fires instead.
 
-Cross-session persistence for the orchestrator:
+## What else is in the box
 
-```
-.cursor/agent-memory/AGENTS.md              ← synced from plugin; do not edit
-.cursor/agent-memory/orchestrator/MEMORY.md ← seeded once; edit this in your project
-```
+Three pieces that came out of running the routing above for real work.
 
-`AGENTS.md` is overwritten on every session start so plugin updates to memory rules land automatically. `MEMORY.md` is seeded once; the plugin will not overwrite it once it exists.
+### An advisor you cannot spam
 
-### `chat-transcripts`
+`advisor` is a read-only subagent that reads your conversation and tells the main agent what to do differently. It never speaks to you. The port of the idea from Claude Code is the easy part; the hard part is that an agent asking for advice tends to ask constantly, and asking costs a full subagent turn.
 
-Hook-captured, scrubbed audit logs land here as `{conversation_id}.jsonl`. Seeded docs explain usage; do not read `.jsonl` files directly — use `_transcripts.py` or the advisor subagent.
+So the gate is a skill, not a suggestion. The main agent runs `/advisor-check` in its own thread first, against three cases: mechanical work continues in-thread, context-gathered-but-nothing-attempted goes back and attempts a plan, and only a real architecture fork, a persistent failure, or a conflict earns the spawn.
 
-```
-.cursor/chat-transcripts/
-  AGENTS.md
-  _transcripts.py    ← synced from plugin; do not edit
-  {conversation_id}.jsonl   ← created at runtime by audit hook
-```
+The spawn line is `Advise. <conversation_id>` and nothing else. No question, no summary. The advisor pulls the transcript itself, which is the point: a hand-written summary is where the main agent quietly launders its own assumptions into the review. A hook validates the stamped id and denies a mismatch.
 
-Bundled boilerplate: [`boilerplate/agent-memory/`](boilerplate/agent-memory/), [`boilerplate/chat-transcripts/`](boilerplate/chat-transcripts/)
+### `MEMORY.md` for the orchestrator
 
----
+`.cursor/agent-memory/orchestrator/MEMORY.md` is an index of memory files, seeded once and then yours. The rules that govern it, [`boilerplate/agent-memory/AGENTS.md`](boilerplate/agent-memory/AGENTS.md), are re-synced from the plugin on every session start, so plugin updates to those rules land without you merging anything. Same idea as Claude Code's memory directory, sorted into user, feedback, project, and reference entries, with the "verify a memory before acting on it" rule that keeps a stale note from being treated as current fact.
 
-## Cloud agents
+### Transcripts, and a CLI to read them
 
-A cloud agent loads the plugin's agents and skills but **not** the plugin's hooks. Cursor loads cloud hooks only from the project's own `.cursor/hooks.json` (plus team and enterprise hooks on Enterprise plans), and `sessionStart` does not run in the cloud at all. With no extra setup, a cloud run gets the `advisor` subagent and skill **advisor-check** but nothing else: no transcript capture, no boilerplate seeding, no main-agent injection.
+The advisor needs to read the conversation. Cursor's own `transcript_path` is `null` in a Cloud Agent, so the plugin captures its own. Hook events are scrubbed and appended to `.cursor/chat-transcripts/{conversation_id}.jsonl`, one JSON object per line, deduplicated so two hook sources delivering the same event record it once.
 
-The advisor still answers rather than breaking. The main agent stamps `Advise. <id>` itself, and the advisor falls back to the plugin's own copy of the CLI, so a cloud run with no captured log reports `<no_transcript …/>` and asks the main agent to restate its objective.
-
-To run the full suite on a cloud VM, commit the launcher into the project:
+Run the CLI with no arguments and it shows you your own transcripts and how to read them:
 
 ```bash
-mkdir -p .cursor/hooks
-cp <plugin>/cloud/hooks.json .cursor/hooks.json
-cp <plugin>/cloud/agent-conductor-hook.sh .cursor/hooks/
-chmod +x .cursor/hooks/agent-conductor-hook.sh
-git add -f .cursor/hooks.json .cursor/hooks/agent-conductor-hook.sh
+python3 .cursor/chat-transcripts/_transcripts.py
 ```
 
-Both files must be tracked by git, since a cloud agent clones the repo fresh. Many projects ignore `.cursor/`, hence the `-f`. The launcher resolves the installed plugin under `~/.cursor/plugins/cache/`, dispatches the event to the plugin's own hook script, and syncs `_transcripts.py` into the project on whichever hook fires first, standing in for the `sessionStart` that never runs. It fails open on every error, exactly like the hooks it delegates to.
+```text
+Browse scrubbed Cursor chat transcripts (one .jsonl per conversation).
 
-`cloud/hooks.json` mirrors the plugin's own [`hooks/hooks.json`](hooks/hooks.json) minus `sessionStart`. Keep them in step when you add an event.
+CONVERSATION_ID                          START                USER  EVENTS  SUMMARY
+bc-09cb2003-0d36-4d08-a80a-60b84652afe2  2026-08-21 17:40:04  -     137     /poteto-mode The features you mentioned and presented as ...
+bc-88f10553-634d-5685-8875-321949cf44f1  2026-08-21 17:49:05  -     91      Read-only fact extraction, no edits. Repo root is /worksp...
 
-### What actually fires in the cloud
+Usage:
+  .cursor/chat-transcripts/_transcripts.py list [--all | -n N]           # list recent transcripts
+  .cursor/chat-transcripts/_transcripts.py show bc-09cb2003-... # conversation view (~60k chars)
+  .cursor/chat-transcripts/_transcripts.py show bc-09cb2003-... --only user,assistant
+  .cursor/chat-transcripts/_transcripts.py search "keywords" [-n N]      # keyword search
 
-`sessionStart` never fires; Cursor documents that. Everything else the plugin registers has now been observed firing on a cloud VM, including `preToolUse` on `Task`, `beforeSubmitPrompt`, `afterAgentThought` and `subagentStop`.
-
-Read a short session's absences carefully. Measure early enough and only `beforeShellExecution`, `afterShellExecution` and `beforeReadFile` have appeared, because the others need the session to do the triggering thing first: `preToolUse` on `Task` needs a subagent spawn, `subagentStop` needs one to finish, `afterFileEdit` needs an edit. Two runs concluded those events were dead when the session had simply not reached them yet. Judge delivery from `cloud-launcher.log` after real work, not from a first look.
-
-Because `preToolUse` on `Task` is not guaranteed to have fired by the time the Executor spawns the advisor, the Executor stamps the spawn line itself and the hook validates the stamp. That instruction is in the `advisor` agent description as well as `__agent-main.md`, so it survives whether or not the inject reached the Executor.
-
-The launcher also runs on desktop, alongside the plugin's own hooks, so both deliver the same event. `audit.sh` drops a line identical to the one before it, timestamp aside, and the orchestrator inject claims one delivery per generation, so a doubled event captures once and injects once. That is deliberate: a cloud VM with no plugins installed writes no plugin manifest, and a project-side installer can write one anywhere, so there is no reliable way to tell cloud from desktop. An environment guess that fails silently is worse than an idempotent write.
-
-### Verifying a cloud run
-
-This repository installs the launcher on itself, so a cloud agent started here exercises the shim on the first tool call. From the project root:
-
-```bash
-plugins/agent-conductor/cloud/verify-cloud-hooks.sh
+Categories for --only: user, assistant, thinking, tool, error, meta
+Default show hides thinking; see the footer for optional flags.
 ```
 
-In a project that only has the plugin installed, run the copy belonging to the plugin the launcher actually resolved. A VM can hold several cached revisions, and an older verifier grades a healthy session differently:
+`show` pages with `--offset` and `-n`, filters with `--only user,assistant,thinking,tool,error,meta`, and budgets output so a subagent can read a long session without blowing its context. `brief` is the advisor's entry point and takes a spawn line verbatim.
+
+**Deciding whether to commit them is your call.** They are written under `.cursor/`, which many projects already ignore, and nothing commits them for you. Before you do, here is exactly what [`scrub.jq`](hooks/transcriptor/scrub.jq) already removed.
+
+| Scrubbed | Detail |
+| --- | --- |
+| Known token formats | `sk-`, `ghp_`, `gho_`, `gha_`, `github_pat_`, `xoxb-` and friends, `ops_`, JWTs |
+| Assignments that name a secret | any `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*API*` variable, value replaced with `[REDACTED]` |
+| File contents | dropped from `beforeReadFile`, and `old_string` and `new_string` dropped from every edit |
+| Read and fetch tool output | replaced with a placeholder |
+| Shell output | last 1200 bytes kept, the rest dropped |
+| Local identifiers | `session_id`, `workspace_roots` and `transcript_path` deleted, `user_email` cut to the part before the `@` |
+| Long strings | capped at 16 KB |
+
+Redaction runs over agent text, tool output, shell output, and error messages. It does not run over the text of the shell commands themselves, so a literal secret typed into a command survives capture. Read a file before you commit it. A shipped `.cursorignore` keeps agents from reading the `.jsonl` files directly, and `beforeShellExecution` blocks commands whose job is dumping the environment, `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`.
+
+## When a hook fails
+
+Every hook in this plugin fails open. A missing dependency, an unwritable directory, or a malformed payload gets appended to `/tmp/cursor-hook-debug/error.log` and the hook returns a permissive response, because a hook that exits non-zero in Cursor's critical path freezes the agent loop. If something is not behaving, that log and the payload dumps beside it are the first place to look.
 
 ```bash
-bash "$(cat /tmp/cursor-hook-debug/plugin-root)/cloud/verify-cloud-hooks.sh"
+tail -f /tmp/cursor-hook-debug/error.log
+cat /tmp/cursor-hook-debug/latest-beforeSubmitPrompt-payload.json
 ```
 
-It reports whether any hook ran, which events reached the launcher, whether the CLI was synced, whether this session was captured, and prints the resulting brief.
+For the design rules these scripts hold themselves to, read [`hooks/README.md`](hooks/README.md).
 
-By default the launcher dispatches to the installed plugin, which is whatever landed on the marketplace ref. To exercise an unreleased working tree instead, set `AGENT_CONDUCTOR_PLUGIN_ROOT`:
+## Layout
 
-```bash
-AGENT_CONDUCTOR_PLUGIN_ROOT="$PWD/plugins/agent-conductor" \
-  .cursor/hooks/agent-conductor-hook.sh hooks/transcriptor/audit.sh <<'JSON'
-{"conversation_id": "probe", "hook_event_name": "afterAgentResponse", "text": "working tree"}
-JSON
-``` `/tmp/cursor-hook-debug/cloud-launcher.log` holds one line per dispatch, which is the only record of which events a cloud agent actually delivers.
+```text
+agents/advisor.md                     read-only advisor subagent
+skills/advisor-check/                  the in-thread gate before spawning it
+hooks/context-injector/                per-agent routing, config/ holds the defaults
+hooks/transcriptor/                    capture, scrub, deny, and the CLI
+boilerplate/                           what gets seeded into .cursor/ on session start
+cloud/                                 the launcher that makes Cloud Agents work
+docs/cloud-agents.md                   cloud setup and verification
+```
 
-The line to watch is `preToolUse on Task`. If it never reaches the stamping hook, the Executor's own `Advise. <id>` stamp is carrying the transport by itself, which is the case the fallback exists for.
-
-Bundled launcher: [`cloud/`](cloud/)
+Tests for the hooks live in [`hooks/transcriptor/tests/`](hooks/transcriptor/tests/) and run with `python3 -m pytest`.
