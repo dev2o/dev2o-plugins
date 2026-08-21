@@ -64,16 +64,22 @@ fi
 command -v jq >/dev/null 2>&1 || fail_open "'jq' is not installed in PATH: $PATH"
 
 plugin_root() {
-  local manifest name
-  # Newest install wins: the cache keeps one directory per plugin revision.
+  local manifest name root best=""
+  # Depth-agnostic on purpose. Observed layouts include
+  # cache/<marketplace>/<pluginId>/<sha>/ and cache/<marketplace>/<sha>/current/<name>/,
+  # so a fixed-depth glob silently finds nothing on half of them. Newest wins.
   while IFS= read -r manifest; do
+    [[ -n "$manifest" ]] || continue
     name=$(jq -r '.name // empty' "$manifest" 2>/dev/null || echo "")
-    if [[ "$name" == "agent-conductor" ]]; then
-      printf '%s\n' "$(dirname "$(dirname "$manifest")")"
-      return 0
+    [[ "$name" == "agent-conductor" ]] || continue
+    root=$(dirname "$(dirname "$manifest")")
+    [[ -d "$root/hooks" ]] || continue
+    if [[ -z "$best" || "$manifest" -nt "$best" ]]; then
+      best="$manifest"
     fi
-  done < <(ls -1t "$HOME"/.cursor/plugins/cache/*/*/*/.cursor-plugin/plugin.json 2>/dev/null)
-  return 1
+  done < <(find "$HOME/.cursor/plugins/cache" -path '*/.cursor-plugin/plugin.json' -type f 2>/dev/null)
+  [[ -n "$best" ]] || return 1
+  printf '%s\n' "$(dirname "$(dirname "$best")")"
 }
 
 # The override exists so this repository can test its own working tree on a

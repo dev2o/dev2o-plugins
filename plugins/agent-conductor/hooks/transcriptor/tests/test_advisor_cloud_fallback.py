@@ -15,7 +15,7 @@ ADVISOR = REPO_ROOT / "agents" / "advisor.md"
 EXE_ADVISOR = REPO_ROOT / "agents" / "exe-advisor.md"
 AGENT_MAIN = REPO_ROOT / "hooks" / "context-injector" / "config" / "__agent-main.md"
 REAL_ID = "959870a8-e0be-40e6-96ca-9ef9226cff13"
-FALLBACK_RE = re.compile(r"^python3 \"\$\(ls .*transcripts\.py.*\)\" brief .*$", re.MULTILINE)
+FALLBACK_RE = re.compile(r"^python3 \"\$\(find .*transcripts\.py.*\)\" brief .*$", re.MULTILINE)
 
 
 def _fallback_command(agent_file: Path) -> str:
@@ -25,7 +25,11 @@ def _fallback_command(agent_file: Path) -> str:
 
 
 def _fake_plugin_install(home: Path) -> None:
-    dest = home / ".cursor" / "plugins" / "cache" / "m" / "1" / "sha" / "hooks" / "transcriptor"
+    # The deeper of the two observed cache layouts, which a fixed-depth glob misses.
+    dest = (
+        home / ".cursor" / "plugins" / "cache" / "m" / "sha" / "current" / "agent-conductor"
+        / "hooks" / "transcriptor"
+    )
     dest.mkdir(parents=True)
     shutil.copy(TRANSCRIPTS_PY, dest / "transcripts.py")
 
