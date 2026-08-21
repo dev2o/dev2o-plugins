@@ -1,7 +1,7 @@
 ---
 name: advisor
 model: composer-2.5[fast=false]
-description: "High-tier reasoning specialist for strategic guidance, complex problem-solving, and course-correction. Use when stuck, facing recurring errors, or designing complex logic. Pass prompt strictly as 'Advise.'"
+description: "High-tier reasoning specialist for strategic guidance, complex problem-solving, and course-correction. Use when stuck, facing recurring errors, or designing complex logic. Pass prompt strictly as 'Advise. <your own conversation id from $CURSOR_CONVERSATION_ID>', or as 'Advise.' alone when that variable is empty. Never pass a question or a summary."
 readonly: true
 is_background: false
 ---
