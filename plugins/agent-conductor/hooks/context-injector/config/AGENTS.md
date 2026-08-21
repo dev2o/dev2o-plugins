@@ -1,8 +1,8 @@
 # Agent Context Injection
 
-Per-agent context files. `__agent-main.md` is the only system-level one: it holds the main-agent (orchestrator) grounding rules, injected at `beforeSubmitPrompt`. All other `agent-{subagent_type}.md` files are optional per-subagent prompts injected at `preToolUse` on Task via `subagent-context-pre-tool-use.sh`.
+Per-agent context files. `__agent-main.md` is the only system-level one: it holds the main-agent grounding rules, injected at `beforeSubmitPrompt`. All other `agent-{subagent_type}.md` files are optional per-subagent prompts injected at `preToolUse` on Task via `subagent-context-pre-tool-use.sh`.
 
-**`__agent-main.md` reaches the main agent only.** Left to the `beforeSubmitPrompt` payload alone, every subagent would receive the orchestrator rules, including the delegation protocol telling it to hand work to subagents, because a cloud Task child arrives as a new `conversation_id` with `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`.
+**`__agent-main.md` reaches the main agent only.** Left to the `beforeSubmitPrompt` payload alone, every subagent would receive the main-agent rules, including the delegation protocol telling it to hand work to subagents, because a cloud Task child arrives as a new `conversation_id` with `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`.
 
 Three signals identify a child, tried in that order, because each is unavailable on some surface:
 
@@ -16,29 +16,23 @@ When the main agent spawns a subagent (Task tool, slash command, etc.), the hook
 
 ## Advisor (special case)
 
-Neither `advisor` nor `exe-advisor` uses `agent-advisor.md`. The hook does not paste a transcript.
+The `advisor` subagent does not use `agent-advisor.md`. The hook does not paste a transcript.
 
-### `advisor` (gatekeeper)
+The main agent runs skill **advisor-check** in-thread before spawning (same gates as `/advisor`). The advisor itself reads the transcript via `brief`.
 
-The Executor stamps its own conversation id, so `prompt` is `Advise. <executor_id>`. The hook validates that stamp rather than supplying it: a matching id passes through unchanged, a different id is denied, and a bare `Advise.` gets the id when the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`).
+The main agent stamps its own conversation id, so `prompt` is `Advise. <executor_id>`. The hook validates that stamp rather than supplying it: a matching id passes through unchanged, a different id is denied, and a bare `Advise.` gets the id when the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`).
 
-The Executor stamps because the hook is not guaranteed to run. Cloud agents load hooks only from the project's own `.cursor/hooks.json`, never from an installed plugin, so on a cloud VM a bare `Advise.` stays bare and the gatekeeper is blind.
+The main agent stamps because the hook is not guaranteed to run. Cloud agents load hooks only from the project's own `.cursor/hooks.json`, never from an installed plugin, so on a cloud VM a bare `Advise.` stays bare until the hook runs.
 
-The gatekeeper fetches the log itself:
+The advisor fetches the log itself:
 
 ```
 python3 .cursor/chat-transcripts/_transcripts.py brief "<spawn line verbatim>"
 ```
 
-That path is synced by `sessionStart`, which cloud agents never run. Both advisor agents fall back to the plugin's own copy under `~/.cursor/plugins/cache/`.
+That path is synced by `sessionStart`, which cloud agents never run. The advisor falls back to the plugin's own copy under `~/.cursor/plugins/cache/`.
 
-`Advise. <id>` selects the triage view (last 10 user, assistant, and tool events) and includes `<escalate>CID:<id></escalate>`.
-
-### `exe-advisor` (Senior Advisor)
-
-Spawned only by the gatekeeper. The prompt is the `<escalate>` token, `CID:<executor_id>`. The hook returns `{"permission":"allow"}` and does not change the prompt.
-
-The senior runs the same `brief` command with that spawn line. That selects the full budgeted view and does not include `<escalate>`.
+`Advise. <id>` selects the full budgeted transcript view (same as legacy `CID:<id>`).
 
 If no log exists, `brief` prints `<no_transcript …/>` and exits 0. A malformed spawn line prints usage on stderr and exits 2.
 
@@ -53,7 +47,7 @@ config/
   agent-{subagent_type}.md
 ```
 
-**No file → no injection** (hook returns `{ "permission": "allow" }`), except `advisor`, which stamps `Advise. <executor_id>` when the parent id is a safe basename. `exe-advisor` is left unchanged.
+**No file → no injection** (hook returns `{ "permission": "allow" }`), except `advisor`, which stamps `Advise. <executor_id>` when the parent id is a safe basename.
 
 ## Project overrides
 
@@ -70,9 +64,9 @@ Context files may include placeholders that the hook substitutes at spawn time:
 
 **Transcripts CLI:** synced to `.cursor/chat-transcripts/_transcripts.py` on each session start (overwrite). Subagents invoke it with a workspace-relative path — no token needed.
 
-**Why the advisor agents must run from the project root:** a subagent shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI falls back to walking up from its working directory to find `.cursor/chat-transcripts`. From anywhere under the project that works; from outside it, the CLI reports no transcript.
+**Why the advisor must run from the project root:** a subagent shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI falls back to walking up from its working directory to find `.cursor/chat-transcripts`. From anywhere under the project that works; from outside it, the CLI reports no transcript.
 
-**Why the Executor stamps the id and the child cannot:** `CURSOR_CONVERSATION_ID` in a subagent shell is that subagent's own id, not its parent's. A child has no way to name the Executor's log, which is why the spawn line carries the id.
+**Why the main agent stamps the id and the advisor cannot:** `CURSOR_CONVERSATION_ID` in a subagent shell is that subagent's own id, not its parent's. A child has no way to name the main agent's log, which is why the spawn line carries the id.
 
 **Lazy evaluation:** substitution runs only when a context file contains a token. Subagents without a context file, or with static-only context, incur zero overhead.
 
@@ -102,4 +96,4 @@ tail -20 /tmp/cursor-hook-debug/error.log
 
 IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for `advisor`, when the stamped `Advise. <id>` line is present).
 
-If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that in `subagent-context-pre-tool-use.sh`. It prepends substituted context to the Task `prompt` before spawn. For `advisor` it stamps the executor id. For `exe-advisor` it returns allow and leaves the prompt alone.
+If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that in `subagent-context-pre-tool-use.sh`. It prepends substituted context to the Task `prompt` before spawn. For `advisor` it stamps the executor id.

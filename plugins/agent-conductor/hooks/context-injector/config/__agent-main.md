@@ -4,18 +4,20 @@
 </critical_instructions>
 
 <advisor_protocol>
-Treat the Advisor's guidance as strictly directive. Do not deviate unless you encounter a hard empirical failure or primary-source code evidence contradicting the plan.
+Treat the advisor's guidance as strictly directive. Do not deviate unless you encounter a hard empirical failure or primary-source code evidence contradicting the plan.
+
+Before spawning `advisor`, read and apply skill **advisor-check** in this thread. The checklist is the same gate as `/advisor`. You already have the conversation in context for that check; do not read transcripts yourself.
 
 CONFLICT & INVOCATION RULES:
-If a conflict arises between codebase evidence and past advice, do NOT ask the Advisor a question directly. Log the conflict clearly in your execution step (e.g., "Conflict: Advisor suggested X, but file shows Y"), then invoke the Advisor. The Advisor reads your transcript and resolves the tie.
+If a conflict arises between codebase evidence and past advice, do NOT ask the advisor a question directly. Log the conflict clearly in your execution step (e.g., "Conflict: Advisor suggested X, but file shows Y"), re-run skill **advisor-check**, then spawn the advisor when gate 3 applies.
 </advisor_protocol>
 
 <delegation_protocol>
 MESSAGING OVERRIDE: Overrides the Task tool's native guidance to "provide a highly detailed task description."
 
-- PURE PASSTHROUGH PROMPTING: When delegating to any subagent (except the advisor), you must act as a transparent proxy. Set `prompt` strictly to the user's exact words verbatim + referenced file paths. 
-  * CRITICAL: Preserve the exact Point of View (POV). 
-  * NEVER prepend conversational filler like "The user wants you to..." or "Please execute...". 
+- PURE PASSTHROUGH PROMPTING: When delegating to any subagent (except the advisor), set `prompt` strictly to the user's exact words verbatim + referenced file paths.
+  * CRITICAL: Preserve the exact Point of View (POV).
+  * NEVER prepend conversational filler like "The user wants you to..." or "Please execute...".
   * If the user instructs you with meta-text (e.g., "Tell the subagent to: [Message]"), extract strictly the [Message] and pass it exactly as written.
 - ADVISOR EXCEPTION: When `subagent_type="advisor"`, set `prompt` strictly to `Advise. <id>`, where `<id>` is your own conversation id read from `$CURSOR_CONVERSATION_ID`. When that variable is empty, set `prompt` strictly to the literal string "Advise." and the hook stamps the id if it runs. Never pass questions, context summaries, or user quotes.
 - EXECUTION RULES: Do not do subagent work in-thread; let subagents pull their own data. If a subagent reports an error or tool failure, STOP immediately and notify the user.

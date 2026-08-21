@@ -437,8 +437,8 @@ def collapse_ws(text: str) -> str:
 
 USAGE_BRIEF = (
     "brief: not a spawn line. Pass your spawn line verbatim, one of:\n"
-    '  "Advise. <executor_id>"     (advisor / gatekeeper)\n'
-    '  "CID:<executor_id>"         (exe-advisor / senior)'
+    '  "Advise. <executor_id>"     (advisor — full transcript view)\n'
+    '  "CID:<executor_id>"         (alias — same full view)'
 )
 
 
@@ -506,7 +506,7 @@ def parse_spawn_token(raw: str) -> SpawnToken | TokenError:
         ref = parse_ref(rest)
         if ref is None:
             return TokenError(raw, USAGE_BRIEF)
-        return TriageToken(ref)
+        return SeniorToken(ref)
     if text[:4] == "CID:":
         rest = text[4:].strip()
         ref = parse_ref(rest)
@@ -707,14 +707,7 @@ def cmd_brief(args: argparse.Namespace) -> int:
         print(token.usage, file=sys.stderr)
         return 2
     if isinstance(token, TriageToken):
-        if token.ref is None:
-            print(render_missing(Missing(None, "unstamped", ()), "triage"))
-            return 0
-        resolution = resolve(token.ref)
-        if isinstance(resolution, Missing):
-            print(render_missing(resolution, "triage"))
-            return 0
-        print(render_triage(resolution))
+        print(render_missing(Missing(None, "unstamped", ()), "senior"))
         return 0
     resolution = resolve(token.ref)
     if isinstance(resolution, Missing):
