@@ -54,6 +54,29 @@ else
   say "WARN" "no launcher log; this project uses its own shim generation, or none. Hook delivery is judged by the capture below instead"
 fi
 
+# A project copies the launcher and its hooks.json, so both go stale whenever the
+# plugin changes them. That staleness is silent: the events simply stop arriving.
+PLUGIN_ROOT_FILE="$DUMP_DIR/plugin-root"
+if [[ -f "$PLUGIN_ROOT_FILE" ]]; then
+  PLUGIN_ROOT=$(cat "$PLUGIN_ROOT_FILE" 2>/dev/null)
+  LOCAL_LAUNCHER="$ROOT/.cursor/hooks/agent-conductor-hook.sh"
+  if [[ -f "$LOCAL_LAUNCHER" && -f "$PLUGIN_ROOT/cloud/agent-conductor-hook.sh" ]]; then
+    note "$(cmp -s "$LOCAL_LAUNCHER" "$PLUGIN_ROOT/cloud/agent-conductor-hook.sh" && echo yes || echo no)" \
+      "the copied launcher matches the installed plugin" \
+      "the copied launcher differs from the installed plugin's; re-copy cloud/agent-conductor-hook.sh"
+  fi
+  # Compared by target, so a project prefix such as an env assignment is ignored.
+  targets() {
+    jq -r '.hooks | to_entries[] | .value[] | .command' "$1" 2>/dev/null |
+      sed 's/.*agent-conductor-hook\.sh //' | sort
+  }
+  if [[ -f "$ROOT/.cursor/hooks.json" && -f "$PLUGIN_ROOT/cloud/hooks.json" ]]; then
+    note "$([[ "$(targets "$ROOT/.cursor/hooks.json")" == "$(targets "$PLUGIN_ROOT/cloud/hooks.json")" ]] && echo yes || echo no)" \
+      "the copied hooks.json registers the same events as the plugin's" \
+      "the copied hooks.json registers different events than the plugin's; re-copy cloud/hooks.json. Missing here: $(comm -13 <(targets "$ROOT/.cursor/hooks.json") <(targets "$PLUGIN_ROOT/cloud/hooks.json") | tr '\n' ' ')"
+  fi
+fi
+
 CLI=$(working_cli || echo "")
 [[ -n "$CLI" ]] && cli_ok=yes || cli_ok=no
 check "$cli_ok" "a copy of the CLI answers brief"
