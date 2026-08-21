@@ -9,6 +9,7 @@
   },
   "homepage": "https://github.com/dev2o/dev2o-plugins/tree/main/plugins/agent-conductor",
   "repository": "https://github.com/dev2o/dev2o-plugins",
+  "logo": "docs/icon.png",
   "keywords": [
     "orchestrator",
     "context-injection",

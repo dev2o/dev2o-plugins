@@ -240,6 +240,16 @@ const checks = [
     },
   },
   {
+    name: "the declared logo exists",
+    run() {
+      const { logo } = readJSON(`${plugin}/.cursor-plugin/plugin.json`);
+      if (!logo) return ["plugin.json declares no logo"];
+      return existsSync(resolve(root, plugin, logo))
+        ? []
+        : [`plugin.json points at a missing logo, ${logo}`];
+    },
+  },
+  {
     name: "the marketplace entry and the plugin manifest describe the same thing",
     run() {
       const entry = readJSON(".cursor-plugin/marketplace.json").plugins[0];
