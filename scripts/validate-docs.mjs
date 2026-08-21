@@ -203,6 +203,28 @@ const checks = [
     },
   },
   {
+    name: "every diagram has both a source and a render",
+    run() {
+      const dir = `${plugin}/docs`;
+      const failures = [];
+      for (const file of readdirSync(resolve(root, dir))) {
+        if (!file.endsWith(".svg")) continue;
+        const png = file.replace(/\.svg$/, ".png");
+        if (!existsSync(resolve(root, dir, png)))
+          failures.push(`${file} has no ${png}; run scripts/render-diagrams.sh`);
+      }
+      for (const doc of docs) {
+        for (const [, target] of read(doc).matchAll(/!\[[^\]]*]\(([^)]+)\)/g)) {
+          if (target.endsWith(".svg"))
+            failures.push(
+              `${doc} embeds ${target}; reference the .png so every renderer shows it`
+            );
+        }
+      }
+      return failures;
+    },
+  },
+  {
     name: "one version across the manifests",
     run() {
       const versions = {

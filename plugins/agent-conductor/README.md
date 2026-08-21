@@ -8,7 +8,7 @@ That breaks as soon as you use subagents. Write "delegate implementation to a su
 
 Agent Conductor gives each role its own file.
 
-![How Agent Conductor routes context, compared with a broadcast rule](docs/addressed-context.svg)
+![How Agent Conductor routes context, compared with a broadcast rule](docs/addressed-context.png)
 
 | File | Who reads it | When it arrives |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ No file for a role means nothing is sent to that role. The `agent-` prefix is fi
 
 `__agent-main.md` is read from disk and handed over on each submission as hook context. It is not a message in your conversation, so it does not pile up turn after turn, and nothing stale sits behind the current copy.
 
-![The same instructions on every turn without filling the thread](docs/thread-cost.svg)
+![The same instructions on every turn without filling the thread](docs/thread-cost.png)
 
 Edit the file and the next prompt uses the new text. That is the part people notice first. You can rework the orchestrator's instructions in the middle of a conversation without restarting the chat or scrolling past six copies of your own boilerplate.
 
