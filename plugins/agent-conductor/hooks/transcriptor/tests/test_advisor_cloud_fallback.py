@@ -29,7 +29,8 @@ def _fallback_command(agent_file: Path) -> str:
 
 
 def _fake_plugin_install(home: Path) -> None:
-    # The deeper of the two observed cache layouts, which a fixed-depth glob misses.
+    # The shape a project-side installer left on a real VM, deeper than Cursor's
+    # own and missed by a fixed-depth glob.
     dest = (
         home / ".cursor" / "plugins" / "cache" / "m" / "sha" / "current" / "agent-conductor"
         / "hooks" / "transcriptor"
