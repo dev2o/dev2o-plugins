@@ -10,19 +10,16 @@ fail_open() {
   exit 0
 }
 
-# 1. Capture stdin safely and save latest payload
 INPUT=$(cat 2>/dev/null || echo "")
 if [[ -z "$INPUT" ]]; then
   fail_open "Received empty stdin"
 fi
 echo "$INPUT" > "$DUMP_DIR/latest-preToolUse-payload.json"
 
-# 2. Check essential dependencies
 if ! command -v jq >/dev/null 2>&1; then
   fail_open "'jq' is not installed in PATH: $PATH"
 fi
 
-# 3. Safely locate and source the context library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTEXT_LIB="$SCRIPT_DIR/lib/context.sh"
 
@@ -32,42 +29,75 @@ fi
 
 source "$CONTEXT_LIB" 2>/dev/null || fail_open "Failed to source $CONTEXT_LIB"
 
-# 4. Check if tool is "Task" (fast exit without logging if not a subagent task)
 TOOL_NAME=$(printf '%s\n' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 if [[ "$TOOL_NAME" != "Task" ]]; then
   echo '{"permission": "allow"}'
   exit 0
 fi
 
-# 5. Safely extract variables without pipefail crashes
 SUBAGENT_TYPE=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || echo "")
 CONVERSATION_ID=$(printf '%s\n' "$INPUT" | jq -r '.conversation_id // empty' 2>/dev/null || echo "")
 PARENT_CONVERSATION_ID=$(printf '%s\n' "$INPUT" | jq -r '.parent_conversation_id // empty' 2>/dev/null || echo "")
 SESSION_ID=$(printf '%s\n' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || echo "")
 ORIG_PROMPT=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null || echo "")
 
+_trim() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+
+_strip_matching_quotes() {
+  local s="$1"
+  case "$s" in
+    \"*\") s="${s#\"}"; s="${s%\"}" ;;
+    \'*\') s="${s#\'}"; s="${s%\'}" ;;
+  esac
+  printf '%s' "$s"
+}
+
+_is_safe_cid() {
+  local id="$1"
+  [[ -n "$id" && "$id" != *".."* && "$id" != *"/"* ]]
+}
+
+_deny_advisor_mismatch() {
+  local msg="SYSTEM BLOCK: Advisor prompt id does not match this session. Spawn with Advise. only."
+  echo "$(date -u): FAILED (preToolUse) - advisor id mismatch" >> "$DUMP_DIR/error.log"
+  if ! OUTPUT_JSON=$(jq -nc --arg m "$msg" '{permission: "deny", agent_message: $m, user_message: $m}' 2>/dev/null); then
+    fail_open "Failed to construct deny JSON payload with jq"
+  fi
+  printf '%s\n' "$OUTPUT_JSON"
+  exit 0
+}
+
 if [[ "$SUBAGENT_TYPE" == "advisor" ]]; then
-  if ! command -v advisor_gatekeeper_prompt >/dev/null 2>&1; then
-    fail_open "Function 'advisor_gatekeeper_prompt' not found after sourcing $CONTEXT_LIB"
+  incoming="$(_trim "$ORIG_PROMPT")"
+  incoming="$(_strip_matching_quotes "$incoming")"
+  incoming="$(_trim "$incoming")"
+  extracted=""
+  head="${incoming:0:7}"
+  low=$(printf '%s' "$head" | tr '[:upper:]' '[:lower:]')
+  if [[ "$low" == "advise." ]]; then
+    extracted="$(_trim "${incoming:7}")"
   fi
-  NEW_PROMPT=$(advisor_gatekeeper_prompt "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
-  if [[ -z "$NEW_PROMPT" ]]; then
-    echo "$(date -u): FAILED (preToolUse) - advisor_gatekeeper_prompt returned empty" >> "$DUMP_DIR/error.log"
-    NEW_PROMPT=$(advisor_gatekeeper_prompt "" "" "" 2>/dev/null || echo "")
+  if [[ -n "$extracted" ]]; then
+    if ! _is_safe_cid "$extracted"; then
+      _deny_advisor_mismatch
+    fi
+    if _is_safe_cid "$CONVERSATION_ID" && [[ "$extracted" != "$CONVERSATION_ID" ]]; then
+      _deny_advisor_mismatch
+    fi
   fi
+  if ! _is_safe_cid "$CONVERSATION_ID"; then
+    echo '{"permission": "allow"}'
+    exit 0
+  fi
+  NEW_PROMPT="Advise. ${CONVERSATION_ID}"
 elif [[ "$SUBAGENT_TYPE" == "exe-advisor" ]]; then
-  if ! command -v advisor_injection_prompt >/dev/null 2>&1; then
-    fail_open "Function 'advisor_injection_prompt' not found after sourcing $CONTEXT_LIB"
-  fi
-  EXECUTOR_CID=""
-  if command -v parse_exe_advisor_cid >/dev/null 2>&1; then
-    EXECUTOR_CID=$(parse_exe_advisor_cid "$ORIG_PROMPT" 2>/dev/null || echo "")
-  fi
-  NEW_PROMPT=$(advisor_injection_prompt "$EXECUTOR_CID" "" "" 2>/dev/null || echo "")
-  if [[ -z "$NEW_PROMPT" ]]; then
-    echo "$(date -u): FAILED (preToolUse) - advisor_injection_prompt returned empty" >> "$DUMP_DIR/error.log"
-    NEW_PROMPT=$(advisor_wrap_transcript "$ID_UNAVAILABLE")
-  fi
+  echo '{"permission": "allow"}'
+  exit 0
 else
   if ! command -v build_subagent_context >/dev/null 2>&1; then
     fail_open "Function 'build_subagent_context' not found after sourcing $CONTEXT_LIB"

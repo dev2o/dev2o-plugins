@@ -20,7 +20,7 @@ import json
 import os
 import re
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -435,6 +435,295 @@ def collapse_ws(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+USAGE_BRIEF = (
+    "brief: not a spawn line. Pass your spawn line verbatim, one of:\n"
+    '  "Advise. <executor_id>"     (advisor / gatekeeper)\n'
+    '  "CID:<executor_id>"         (exe-advisor / senior)'
+)
+
+
+@dataclass(frozen=True)
+class Ref:
+    id: str
+
+    @property
+    def senior_token(self) -> str:
+        return f"CID:{self.id}"
+
+
+@dataclass(frozen=True)
+class TriageToken:
+    ref: Ref | None
+
+
+@dataclass(frozen=True)
+class SeniorToken:
+    ref: Ref
+
+
+@dataclass(frozen=True)
+class TokenError:
+    given: str
+    usage: str
+
+
+@dataclass(frozen=True)
+class Capture:
+    ref: Ref
+    source: str
+    events: list[dict]
+
+
+@dataclass(frozen=True)
+class Missing:
+    ref: Ref | None
+    reason: str
+    tried: tuple[str, ...]
+
+
+SpawnToken = TriageToken | SeniorToken
+Resolution = Capture | Missing
+Fetcher = Callable[[Ref], Capture | None]
+
+
+def parse_ref(raw: str) -> Ref | None:
+    cid = raw.strip()
+    if not cid or any(ch.isspace() for ch in cid):
+        return None
+    if ".." in cid or "/" in cid:
+        return None
+    return Ref(cid)
+
+
+def parse_spawn_token(raw: str) -> SpawnToken | TokenError:
+    text = raw.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()
+    if text[:7].lower() == "advise.":
+        rest = text[7:].strip()
+        if not rest:
+            return TriageToken(None)
+        ref = parse_ref(rest)
+        if ref is None:
+            return TokenError(raw, USAGE_BRIEF)
+        return TriageToken(ref)
+    if text[:4] == "CID:":
+        rest = text[4:].strip()
+        ref = parse_ref(rest)
+        if ref is None:
+            return TokenError(raw, USAGE_BRIEF)
+        return SeniorToken(ref)
+    ref = parse_ref(text)
+    if ref is not None:
+        return TriageToken(ref)
+    return TokenError(raw, USAGE_BRIEF)
+
+
+def cursor_project_slug(root: Path) -> str:
+    try:
+        resolved = root.resolve()
+    except Exception:
+        resolved = root
+    posix = resolved.as_posix()
+    if posix.startswith("/"):
+        posix = posix[1:]
+    return posix.replace("/", "-")
+
+
+def _message_text(raw: dict) -> str:
+    msg = raw.get("message")
+    if isinstance(msg, str):
+        return msg
+    if not isinstance(msg, dict):
+        return str(raw.get("text") or raw.get("content") or "")
+    content = msg.get("content")
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    parts: list[str] = []
+    for item in content:
+        if isinstance(item, dict) and item.get("type") == "text":
+            text = item.get("text")
+            if text:
+                parts.append(str(text))
+    return "\n".join(parts)
+
+
+def _tool_uses(raw: dict) -> list[dict]:
+    msg = raw.get("message")
+    if not isinstance(msg, dict):
+        return []
+    content = msg.get("content")
+    if not isinstance(content, list):
+        return []
+    return [item for item in content if isinstance(item, dict) and item.get("type") == "tool_use"]
+
+
+def normalize_agent_event(raw: dict) -> list[dict]:
+    if raw.get("hook_event_name"):
+        return [raw]
+    role = str(raw.get("role") or "").lower()
+    if role == "user":
+        text = _message_text(raw)
+        return [{"hook_event_name": "beforeSubmitPrompt", "prompt": text}] if text else []
+    if role == "assistant":
+        out: list[dict] = []
+        text = _message_text(raw)
+        if text:
+            out.append({"hook_event_name": "afterAgentResponse", "text": text})
+        for tu in _tool_uses(raw):
+            out.append(
+                {
+                    "hook_event_name": "preToolUse",
+                    "tool_name": tu.get("name") or "tool",
+                    "tool_input": tu.get("input") or {},
+                }
+            )
+        return out
+    return []
+
+
+def load_capture(path: Path, ref: Ref, source: str) -> Capture | None:
+    try:
+        if not path.is_file():
+            return None
+    except (OSError, PermissionError):
+        return None
+    events, _skipped = load_transcript(path)
+    normalized: list[dict] = []
+    for ev in events:
+        if ev.get("hook_event_name"):
+            normalized.append(ev)
+        else:
+            normalized.extend(normalize_agent_event(ev))
+    return Capture(ref, source, normalized)
+
+
+def fetch_plugin_capture(ref: Ref) -> Capture | None:
+    return load_capture(transcript_dir() / f"{ref.id}.jsonl", ref, "plugin-capture")
+
+
+def workspace_agent_transcript_path(ref: Ref) -> Path | None:
+    base = Path.home() / ".cursor" / "projects" / cursor_project_slug(project_root()) / "agent-transcripts"
+    nested = base / ref.id / f"{ref.id}.jsonl"
+    flat = base / f"{ref.id}.jsonl"
+    try:
+        if nested.is_file():
+            return nested
+        if flat.is_file():
+            return flat
+    except (OSError, PermissionError):
+        return None
+    return None
+
+
+def fetch_cursor_agent_transcripts(ref: Ref) -> Capture | None:
+    path = workspace_agent_transcript_path(ref)
+    if path is None:
+        return None
+    return load_capture(path, ref, "cursor-agent-transcripts")
+
+
+def miss_cloud_dash(_ref: Ref) -> Capture | None:
+    return None
+
+
+def sources_for(_ref: Ref) -> tuple[tuple[str, Fetcher], ...]:
+    return (
+        ("plugin-capture", fetch_plugin_capture),
+        ("cursor-agent-transcripts", fetch_cursor_agent_transcripts),
+        ("cloud-dash", miss_cloud_dash),
+    )
+
+
+def resolve(ref: Ref) -> Resolution:
+    tried: list[str] = []
+    for name, fetch in sources_for(ref):
+        tried.append(name)
+        cap = fetch(ref)
+        if cap is not None:
+            return cap
+    return Missing(ref, "not-found", tuple(tried))
+
+
+def first_objective(events: list[dict]) -> str:
+    for ev in events:
+        if category_for(ev) == "user":
+            return collapse_ws(str(ev.get("prompt", "")))
+    return ""
+
+
+def render_recent(events: list[dict], last_n: int = 10) -> str:
+    indexed = _filter_indexed(events, {"user", "assistant", "tool"}, hide_thinking=True)
+    page = indexed[-last_n:]
+    blocks = render_blocks(page, short=False)
+    return BLOCK_SEP.join(b.text for b in blocks)
+
+
+def render_missing(missing: Missing, audience: str) -> str:
+    ref_attr = f' ref="{missing.ref.id}"' if missing.ref else ""
+    tried = ",".join(missing.tried)
+    tried_attr = f' tried="{tried}"' if tried else ""
+    return (
+        f'<brief audience="{audience}"{ref_attr}>\n'
+        f'<no_transcript reason="{missing.reason}"{tried_attr}/>\n'
+        f"</brief>"
+    )
+
+
+def render_triage(cap: Capture, recent: int = 10) -> str:
+    objective = first_objective(cap.events)
+    body = render_recent(cap.events, recent)
+    obj_block = f"<objective>\n{objective}\n</objective>\n" if objective else ""
+    recent_block = f"<recent>\n{body}\n</recent>\n" if body else "<recent/>\n"
+    return (
+        f'<brief audience="triage" ref="{cap.ref.id}" '
+        f'source="{cap.source}" events="{len(cap.events)}">\n'
+        f"{obj_block}"
+        f"{recent_block}"
+        f"<escalate>{cap.ref.senior_token}</escalate>\n"
+        f"</brief>"
+    )
+
+
+def render_senior(cap: Capture, budget: int = DEFAULT_BUDGET) -> str:
+    indexed = _filter_indexed(cap.events, None, hide_thinking=True)
+    blocks = render_blocks(indexed, short=False)
+    texts, omitted = pack_blocks(blocks, budget, cap.ref.id)
+    truncated = "true" if omitted is not None else "false"
+    body = BLOCK_SEP.join(texts)
+    return (
+        f'<brief audience="senior" ref="{cap.ref.id}" '
+        f'source="{cap.source}" events="{len(cap.events)}" truncated="{truncated}">\n'
+        f"<transcript>\n{body}\n</transcript>\n"
+        f"</brief>"
+    )
+
+
+def cmd_brief(args: argparse.Namespace) -> int:
+    token = parse_spawn_token(args.spawn_line)
+    if isinstance(token, TokenError):
+        print(token.usage, file=sys.stderr)
+        return 2
+    if isinstance(token, TriageToken):
+        if token.ref is None:
+            print(render_missing(Missing(None, "unstamped", ()), "triage"))
+            return 0
+        resolution = resolve(token.ref)
+        if isinstance(resolution, Missing):
+            print(render_missing(resolution, "triage"))
+            return 0
+        print(render_triage(resolution))
+        return 0
+    resolution = resolve(token.ref)
+    if isinstance(resolution, Missing):
+        print(render_missing(resolution, "senior"))
+        return 0
+    print(render_senior(resolution))
+    return 0
+
+
 _TITLE_RE = re.compile(r"--title\s+(?:\"([^\"]*)\"|'([^']*)')")
 _COMMIT_HEREDOC_RE = re.compile(r"-m\s+\"\$\(cat\s+<<'?EOF'?\n([^\n]*)")
 _COMMIT_MSG_RE = re.compile(r"-m\s+(?:\"([^\"]*)\"|'([^']*)')")
@@ -803,6 +1092,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     show_p.add_argument("--json", action="store_true", help="Output raw JSON lines")
     show_p.set_defaults(func=cmd_show)
+
+    brief_p = sub.add_parser("brief", help="Expand a spawn line into the reader's view")
+    brief_p.add_argument(
+        "spawn_line",
+        help='Your spawn line verbatim: "Advise. <id>" or "CID:<id>"',
+    )
+    brief_p.set_defaults(func=cmd_brief)
 
     search_p = sub.add_parser("search", help="Keyword search across transcripts")
     search_p.add_argument("term", help="Search term")
