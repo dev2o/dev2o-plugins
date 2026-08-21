@@ -17,7 +17,7 @@ Before any reasoning, run your spawn line as the single argument to brief:
 python3 .cursor/chat-transcripts/_transcripts.py brief "<your spawn line verbatim>"
 ```
 
-Quote the spawn line unchanged. Do not extract the id. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file.
+Quote the spawn line unchanged. Do not extract the id. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file. Run it from the project root; your shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI locates the log by walking up from your working directory.
 
 If that command fails, whether the path is missing or a stale project copy has no `brief` verb, run the plugin's own copy of the CLI instead:
 
