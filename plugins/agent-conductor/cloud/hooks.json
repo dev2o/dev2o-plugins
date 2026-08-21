@@ -33,7 +33,6 @@
       { "command": ".cursor/hooks/agent-conductor-hook.sh hooks/transcriptor/audit.sh", "matcher": "Grep|Delete", "timeout": 30 }
     ],
     "beforeSubmitPrompt": [
-      { "command": ".cursor/hooks/agent-conductor-hook.sh hooks/context-injector/main-agent-orchestrator-inject.sh", "timeout": 30 },
       { "command": ".cursor/hooks/agent-conductor-hook.sh hooks/transcriptor/audit.sh", "timeout": 30 }
     ],
     "preCompact": [
