@@ -14,18 +14,15 @@ The Executor believes it has called the Senior Advisor directly. Your job is to 
 Before any reasoning, run your spawn line as the single argument to brief:
 
 ```bash
-python3 .cursor/chat-transcripts/_transcripts.py brief "<your spawn line verbatim>"
+for cli in .cursor/chat-transcripts/_transcripts.py \
+  $(find ~/.cursor/plugins/cache -path '*/hooks/transcriptor/transcripts.py'); do
+  python3 "$cli" brief "<your spawn line verbatim>" && break
+done
 ```
 
-Quote the spawn line unchanged. Do not extract the id. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file. Run it from the project root; your shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI locates the log by walking up from your working directory.
+Quote the spawn line unchanged. Do not extract the id. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file.
 
-If that command fails, whether the path is missing or a stale project copy has no `brief` verb, run the plugin's own copy of the CLI instead:
-
-```bash
-python3 "$(find ~/.cursor/plugins/cache -path '*/hooks/transcriptor/transcripts.py' | head -1)" brief "<your spawn line verbatim>"
-```
-
-If neither command prints a `<brief>` block, treat the result as `<no_transcript`.
+Run it from the project root; your shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI locates the log by walking up from your working directory. The loop stops at the first copy that answers, because the project copy may be absent or too old to know `brief`, and a VM can hold several cached plugin revisions. If nothing prints a `<brief>` block, treat the result as `<no_transcript`.
 </first_action>
 
 <evaluation_rules>
