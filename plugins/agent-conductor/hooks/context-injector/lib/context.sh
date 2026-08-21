@@ -89,6 +89,52 @@ is_cli_agent() {
 
 REGISTRY_DIR="${CURSOR_HOOK_REGISTRY_DIR:-/tmp/cursor-hook-debug/registry}"
 
+# Precise signals first. A desktop payload names the child outright, and
+# subagentStart names it on any surface that delivers the event. Prompt matching
+# below is the fallback for a cloud beforeSubmitPrompt, which carries neither.
+native_child_type() {
+  local input="$1" cid parent stype
+  command -v jq >/dev/null 2>&1 || return 1
+  stype=$(printf '%s\n' "$input" | jq -r '.subagent_type // .tool_input.subagent_type // empty' 2>/dev/null || echo "")
+  cid=$(printf '%s\n' "$input" | jq -r '.conversation_id // empty' 2>/dev/null || echo "")
+  parent=$(printf '%s\n' "$input" | jq -r '.parent_conversation_id // empty' 2>/dev/null || echo "")
+  if [[ -n "$stype" ]]; then
+    printf '%s' "$stype"
+    return 0
+  fi
+  if [[ -n "$parent" && "$parent" != "$cid" ]]; then
+    printf '%s' "unknown"
+    return 0
+  fi
+  return 1
+}
+
+# subagentStart carries the child's own id. Registering it is exact, unlike
+# matching a prompt, so it wins when the event is delivered.
+record_subagent_start() {
+  local input="$1" child cid parent
+  command -v jq >/dev/null 2>&1 || return 0
+  child=$(printf '%s\n' "$input" | jq -r '.subagent_id // empty' 2>/dev/null || echo "")
+  if [[ -z "$child" ]]; then
+    cid=$(printf '%s\n' "$input" | jq -r '.conversation_id // empty' 2>/dev/null || echo "")
+    parent=$(printf '%s\n' "$input" | jq -r '.parent_conversation_id // empty' 2>/dev/null || echo "")
+    # Never claim the parent as its own child: on some payloads both ids are the
+    # spawning session, and claiming it would silence the orchestrator inject.
+    [[ -n "$cid" && -n "$parent" && "$cid" != "$parent" ]] || return 0
+    child="$cid"
+  fi
+  claim_subagent "$child"
+}
+
+# Why an inject was skipped or delivered, which is otherwise invisible.
+log_inject_decision() {
+  local cid="$1" decision="$2" reason="$3"
+  mkdir -p "$REGISTRY_DIR" 2>/dev/null || return 0
+  printf '%s cid=%s decision=%s reason=%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${cid:-none}" "$decision" "$reason" \
+    >> "$REGISTRY_DIR/inject-decisions.log" 2>/dev/null || true
+}
+
 prompt_key() {
   local text="$1" digest=""
   if command -v sha256sum >/dev/null 2>&1; then

@@ -115,6 +115,101 @@ def test_the_advisor_child_does_not_get_it_either(tmp_path: Path) -> None:
     assert "additional_context" not in out
 
 
+def _subagent_start(registry: Path, project_root: Path, payload: dict) -> None:
+    start = REPO_ROOT / "hooks" / "context-injector" / "subagent-start-register.sh"
+    result = subprocess.run(
+        ["bash", str(start)],
+        input=json.dumps(payload),
+        cwd=str(REPO_ROOT),
+        text=True,
+        capture_output=True,
+        check=False,
+        env=_env(registry, project_root),
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"permission": "allow"}
+
+
+def test_subagent_start_binds_the_child_id_exactly(tmp_path: Path) -> None:
+    # The precise signal: no prompt matching involved.
+    registry = tmp_path / "reg"
+    child = str(uuid.uuid4())
+    _subagent_start(
+        registry,
+        tmp_path,
+        {"hook_event_name": "subagentStart", "subagent_id": child, "subagent_type": "explore"},
+    )
+    out = _submit(registry, tmp_path, child, "text that was never a Task prompt")
+    assert "additional_context" not in out
+
+
+def test_subagent_start_falls_back_to_a_distinct_conversation_id(tmp_path: Path) -> None:
+    registry = tmp_path / "reg"
+    child = str(uuid.uuid4())
+    _subagent_start(
+        registry,
+        tmp_path,
+        {
+            "hook_event_name": "subagentStart",
+            "conversation_id": child,
+            "parent_conversation_id": str(uuid.uuid4()),
+        },
+    )
+    assert "additional_context" not in _submit(registry, tmp_path, child, "anything")
+
+
+def test_subagent_start_never_claims_the_parent_as_its_own_child(tmp_path: Path) -> None:
+    # Both ids being the spawning session must not silence that session.
+    registry = tmp_path / "reg"
+    parent = str(uuid.uuid4())
+    _subagent_start(
+        registry,
+        tmp_path,
+        {
+            "hook_event_name": "subagentStart",
+            "conversation_id": parent,
+            "parent_conversation_id": parent,
+        },
+    )
+    out = _submit(registry, tmp_path, parent, "fix the pricing flow")
+    assert "delegation_protocol" in out["additional_context"]
+
+
+def test_a_payload_that_names_itself_a_child_is_skipped(tmp_path: Path) -> None:
+    # Desktop names the child outright, so no registry is needed there.
+    registry = tmp_path / "reg"
+    result = subprocess.run(
+        ["bash", str(INJECT)],
+        input=json.dumps(
+            {
+                "conversation_id": "child",
+                "parent_conversation_id": "parent",
+                "generation_id": str(uuid.uuid4()),
+                "hook_event_name": "beforeSubmitPrompt",
+                "composer_mode": "agent",
+                "prompt": "never seen before",
+            }
+        ),
+        cwd=str(REPO_ROOT),
+        text=True,
+        capture_output=True,
+        check=False,
+        env=_env(registry, tmp_path),
+    )
+    assert "additional_context" not in json.loads(result.stdout)
+
+
+def test_the_decision_is_logged_either_way(tmp_path: Path) -> None:
+    registry = tmp_path / "reg"
+    prompt = "go read the flow"
+    _spawn(registry, tmp_path, "explore", prompt)
+    _submit(registry, tmp_path, str(uuid.uuid4()), prompt)
+    _submit(registry, tmp_path, str(uuid.uuid4()), "a human question")
+    log = (registry / "inject-decisions.log").read_text(encoding="utf-8")
+    assert "decision=skip reason=prompt matches a recorded spawn" in log
+    assert "decision=inject reason=main agent" in log
+
+
 def test_the_parent_keeps_getting_it_after_spawning(tmp_path: Path) -> None:
     registry = tmp_path / "reg"
     parent = str(uuid.uuid4())
