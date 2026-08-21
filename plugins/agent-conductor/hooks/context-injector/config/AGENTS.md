@@ -18,7 +18,7 @@ When the main agent spawns a subagent (Task tool, slash command, etc.), the hook
 
 The `advisor` subagent does not use `agent-advisor.md`. The hook does not paste a transcript.
 
-The main agent runs skill **advisor-check** in-thread before spawning (same gates as `/advisor`). The advisor itself reads the transcript via `brief`.
+The main agent runs skill **advisor-check** in-thread before spawning. The advisor itself reads the transcript via `brief`.
 
 The main agent stamps its own conversation id, so `prompt` is `Advise. <executor_id>`. The hook validates that stamp rather than supplying it: a matching id passes through unchanged, a different id is denied, and a bare `Advise.` gets the id when the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`).
 

@@ -18,9 +18,23 @@ git add -f .cursor/hooks.json .cursor/hooks/agent-conductor-hook.sh
 
 Git has to track both files, because a Cloud Agent clones the repo fresh. Many projects ignore `.cursor/`, which is why `-f` is there.
 
-The launcher finds the installed plugin under `~/.cursor/plugins/cache/`, passes the event to the plugin's own hook script, and syncs `_transcripts.py` into the project on whichever hook fires first. That sync stands in for the `sessionStart` that never runs. Every error path fails open, exactly like the hooks it delegates to.
+The launcher finds the installed plugin under `~/.cursor/plugins/cache/`, passes the event to the plugin's own hook script, and syncs `_transcripts.py` into the project on whichever hook fires first. That covers the CLI the advisor needs, and only that. Every error path fails open, exactly like the hooks it delegates to.
 
 `cloud/hooks.json` mirrors [`hooks/hooks.json`](../hooks/hooks.json) minus `sessionStart`. Keep the two in step when you add an event.
+
+## What the launcher does not carry over
+
+`sessionStart` is where the plugin seeds `.cursor/`, and it never runs in the cloud. The launcher closes one part of that gap. It does not seed the rest, so agent memory does not exist on a cloud VM unless the project committed it.
+
+That leaves the memory feature half delivered. `__agent-main.md` reaches the main agent and tells it that `./.cursor/agent-memory/orchestrator` exists and not to check for it, while `boilerplate/agent-memory/AGENTS.md`, which is where the memory format and the rules for writing an entry live, is only ever copied by `sessionStart`. So a cloud session is pointed at a memory system whose instructions it never receives, in a directory that is not there. Writing a file still works, because a write creates the parent, but nothing tells the agent what to write.
+
+Commit the two files alongside the launcher if you want memory in the cloud.
+
+```bash
+git add -f .cursor/agent-memory/AGENTS.md .cursor/agent-memory/orchestrator/MEMORY.md
+```
+
+The launcher also does not install itself and does not write `.cursor/hooks.json`. It cannot. Cursor reads `.cursor/hooks.json` to discover the launcher, so with no hooks file nothing runs and none of the plugin's code executes to create one. That bootstrap has to arrive with the repository, which is what the copy step above is for.
 
 ## What fires in the cloud
 

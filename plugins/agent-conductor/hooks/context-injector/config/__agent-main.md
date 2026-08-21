@@ -6,10 +6,10 @@
 <advisor_protocol>
 Treat the advisor's guidance as strictly directive. Do not deviate unless you encounter a hard empirical failure or primary-source code evidence contradicting the plan.
 
-Before spawning `advisor`, read and apply skill **advisor-check** in this thread. The checklist is the same gate as `/advisor`. You already have the conversation in context for that check; do not read transcripts yourself.
+Before spawning `advisor`, read and apply skill **advisor-check** in this thread. You already have the conversation in context for that check, so do not read transcripts yourself.
 
 CONFLICT & INVOCATION RULES:
-If a conflict arises between codebase evidence and past advice, do NOT ask the advisor a question directly. Log the conflict clearly in your execution step (e.g., "Conflict: Advisor suggested X, but file shows Y"), re-run skill **advisor-check**, then spawn the advisor when gate 3 applies.
+If a conflict arises between codebase evidence and past advice, do NOT ask the advisor a question directly. Log the conflict clearly in your execution step (e.g., "Conflict: Advisor suggested X, but file shows Y"), re-run skill **advisor-check**, then spawn the advisor when the Legitimate Need gate applies.
 </advisor_protocol>
 
 <delegation_protocol>

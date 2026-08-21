@@ -20,7 +20,7 @@ No file for a role means nothing is sent to that role. The `agent-` prefix is fi
 
 ## The main agent's copy never lands in the thread
 
-`__agent-main.md` is read from disk on each submission and handed over as hook context rather than as a message. So it does not pile up turn after turn, and nothing stale sits behind the current copy.
+`__agent-main.md` is read from disk on each submission and handed over as hook context rather than as a message. So it does not pile up turn after turn, and nothing stale sits behind the current copy. Checked from inside the agent, the copy is attached to the latest submission only, so an agent six turns into a conversation is reading exactly one.
 
 ![The same instructions on every turn without filling the thread](docs/thread-cost.png)
 
@@ -138,6 +138,8 @@ The spawn line is `Advise. <conversation_id>` and nothing else. No question, no 
 `.cursor/agent-memory/orchestrator/MEMORY.md` is an index of memory files, seeded once and then yours. Entries sort into user, feedback, project, and reference, the same shape Claude Code uses.
 
 The rules that govern it live in [`boilerplate/agent-memory/AGENTS.md`](boilerplate/agent-memory/AGENTS.md) and re-sync from the plugin on every session start, so an update to those rules lands without you merging anything. The rule worth knowing is the one that says a memory naming a file or a flag is a claim about the past, so the agent checks the file still exists before recommending it.
+
+Session start is the only thing that seeds either file, and a Cloud Agent never runs it. Commit both if you want memory there, as [Cloud Agents](docs/cloud-agents.md) explains.
 
 ### Transcripts, and a CLI to read them
 
