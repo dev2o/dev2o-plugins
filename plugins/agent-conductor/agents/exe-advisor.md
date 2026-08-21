@@ -16,6 +16,14 @@ python3 .cursor/chat-transcripts/_transcripts.py brief "<your spawn line verbati
 ```
 
 The spawn line is `CID:<executor_id>`. Quote it unchanged. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file.
+
+If that path does not exist, run the plugin's own copy of the CLI instead:
+
+```bash
+python3 "$(ls -1t ~/.cursor/plugins/cache/*/*/*/hooks/transcriptor/transcripts.py | head -1)" brief "<your spawn line verbatim>"
+```
+
+If neither command prints a `<brief>` block, treat the result as `<no_transcript`.
 </first_action>
 
 # CORE CONSTRAINTS
