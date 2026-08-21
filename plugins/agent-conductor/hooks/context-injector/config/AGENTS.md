@@ -10,15 +10,17 @@ Neither `advisor` nor `exe-advisor` uses `agent-advisor.md`. The hook does not p
 
 ### `advisor` (gatekeeper)
 
-The Executor sets `prompt` to `Advise.` When the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`), the hook delivers `Advise. <executor_id>`.
+The Executor stamps its own conversation id, so `prompt` is `Advise. <executor_id>`. The hook validates that stamp rather than supplying it: a matching id passes through unchanged, a different id is denied, and a bare `Advise.` gets the id when the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`).
 
-If the incoming prompt already carries that same id, the stamp is unchanged. If it carries a different id, the hook denies the spawn.
+The Executor stamps because the hook is not guaranteed to run. Cloud agents load hooks only from the project's own `.cursor/hooks.json`, never from an installed plugin, so on a cloud VM a bare `Advise.` stays bare and the gatekeeper is blind.
 
 The gatekeeper fetches the log itself:
 
 ```
 python3 .cursor/chat-transcripts/_transcripts.py brief "<spawn line verbatim>"
 ```
+
+That path is synced by `sessionStart`, which cloud agents never run. Both advisor agents fall back to the plugin's own copy under `~/.cursor/plugins/cache/`.
 
 `Advise. <id>` selects the triage view (last 10 user, assistant, and tool events) and includes `<escalate>CID:<id></escalate>`.
 
