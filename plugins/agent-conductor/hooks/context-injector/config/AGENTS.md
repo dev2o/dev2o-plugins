@@ -2,6 +2,8 @@
 
 Per-agent context files. `__agent-main.md` is the only system-level one: it holds the main-agent (orchestrator) grounding rules, injected at `beforeSubmitPrompt`. All other `agent-{subagent_type}.md` files are optional per-subagent prompts injected at `preToolUse` on Task via `subagent-context-pre-tool-use.sh`.
 
+**`__agent-main.md` reaches the main agent only.** A cloud Task child is indistinguishable from a main agent in the `beforeSubmitPrompt` payload: new `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id`, no `subagent_type`. Left to the payload, every subagent would receive the orchestrator rules, including the delegation protocol telling it to hand work to subagents. So the spawn hook records the exact prompt each child will receive, and the inject hook skips any prompt it recognizes from that registry, then remembers the child's conversation id for its later turns. The registry lives in `$CURSOR_HOOK_REGISTRY_DIR`, defaulting to `/tmp/cursor-hook-debug/registry`.
+
 When the main agent spawns a subagent (Task tool, slash command, etc.), the hook reads `tool_input.subagent_type`. If a matching file exists here, its contents are prepended to the Task `prompt`.
 
 ## Advisor (special case)

@@ -48,6 +48,23 @@ if ! command -v orchestrator_context >/dev/null 2>&1; then
   fail_open "Function 'orchestrator_context' not found after sourcing $CONTEXT_LIB"
 fi
 
+CONVERSATION_ID=$(printf '%s\n' "$INPUT" | jq -r '.conversation_id // empty' 2>/dev/null || echo "")
+PROMPT=$(printf '%s\n' "$INPUT" | jq -r '.prompt // empty' 2>/dev/null || echo "")
+
+# This context tells its reader to delegate work to subagents, so a subagent must
+# never receive it. A cloud Task child looks exactly like a main agent here, so
+# identity comes from the spawn registry: the prompt the spawn hook recorded on
+# the child's first turn, and the conversation id from then on.
+if is_known_subagent "$CONVERSATION_ID"; then
+  echo '{"continue": true}'
+  exit 0
+fi
+if [[ -n "$PROMPT" ]] && spawn_recorded "$PROMPT"; then
+  claim_subagent "$CONVERSATION_ID"
+  echo '{"continue": true}'
+  exit 0
+fi
+
 CONTEXT=$(orchestrator_context 2>/dev/null || echo "")
 if [[ -z "$CONTEXT" ]]; then
   echo '{"continue": true}'
