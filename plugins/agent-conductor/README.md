@@ -74,21 +74,17 @@ The plugin ships a default `__agent-main.md`. Override it in your project, per f
    2026-08-21T17:49:05Z cid=bc-88f10553-...  decision=skip   reason=prompt matches a recorded spawn
    ```
 
-Steps 3 and 4 are the whole product, and step 3 is also the check described below. The second log line is the subagent being kept out.
+Steps 3 and 4 are the whole product. The second log line is the subagent being kept out.
 
 Keeping it out is harder than it sounds. On a Cloud Agent it is genuinely hard. A spawned child arrives with a fresh `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`, which is exactly what a main agent looks like. Three signals settle it, in order. The payload names the child when it can. `subagentStart` carries the child's own id. Failing both, the spawn hook already knows the exact prompt each child will receive, so the routing hook skips a prompt it recognizes and remembers that conversation id for later turns.
 
 Unknown sessions get injected. A broken registry costs you subagent isolation, not the orchestrator's instructions.
 
-### Run the codename check before you rely on the main-agent path
+### The two paths use different hook fields
 
-The two paths do not carry the same risk, so it is worth knowing which is which.
+The subagent path rewrites the Task prompt through `updated_input` on `preToolUse`. The main-agent path returns `additional_context` on `beforeSubmitPrompt`, and the agent receives it as a system reminder on that turn.
 
-The subagent path rewrites the Task prompt through `updated_input` on `preToolUse`. Cursor documents that field and honors it.
-
-The main-agent path returns `additional_context` on `beforeSubmitPrompt`. Cursor's hooks reference lists only `continue` and `user_message` as output for that hook, and reports on the Cursor forum say an unknown field passes validation and is then dropped before the model sees it, with `sessionStart` named as the only hook where `additional_context` works end to end. Cursor's reference is out of date in the other direction too, since it lists two input fields for the hook while the real payload carries twelve, so neither the reference nor a forum thread settles what your build does.
-
-Step 3 above settles it in a minute. Ask for the codename. If the agent knows it, the path is live. If it does not, `inject-decisions.log` still shows `decision=inject`, because that line records what the hook returned rather than what the model received.
+Cursor's hooks reference does not list `additional_context` as an output field for `beforeSubmitPrompt`, though it arrives. That reference is behind the implementation in the other direction too, listing two input fields for the hook where the real payload carries twelve. Step 3 of the quickstart is how you confirm the delivery on your own build, and it is worth running once after an upgrade, because the plugin depends on behavior Cursor has not written down.
 
 ## Configuration
 
