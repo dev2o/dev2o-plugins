@@ -30,10 +30,12 @@ if [[ -f "$LAUNCHER_LOG" ]]; then
     say "FAIL" "preToolUse never reached the launcher"
     fail=1
   fi
+  # WARN, not FAIL: the Executor stamps the spawn line itself, so a missing Task
+  # hook costs the mismatch check and nothing else. Every FAIL below is fatal.
   if grep -q 'target=hooks/context-injector/subagent-context-pre-tool-use.sh' "$LAUNCHER_LOG"; then
     say "PASS" "preToolUse on Task reached the stamping hook"
   else
-    say "FAIL" "preToolUse on Task never reached the stamping hook; the Executor's own stamp is carrying the transport"
+    say "WARN" "preToolUse on Task never reached the stamping hook; the Executor's own stamp is carrying the transport, and the id-mismatch deny is not enforceable here"
   fi
   printf '\n'
 else
@@ -64,7 +66,7 @@ fi
 
 printf '\n'
 if [[ "$fail" == "0" ]]; then
-  say "VERDICT" "agent-conductor is live in this session"
+  say "VERDICT" "agent-conductor is live in this session; WARN lines are expected limitations, FAIL lines are not"
 else
   say "VERDICT" "agent-conductor is degraded in this session; see the FAIL lines"
 fi
