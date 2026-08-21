@@ -33,6 +33,8 @@ def _install_plugin(home: Path, cloud: bool = True, layout: str = "marketplace/i
 
 def _run(target: str, payload: dict, project_root: Path, home: Path) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
+    # A developer with this exported would otherwise redirect every dispatch.
+    env.pop("AGENT_CONDUCTOR_PLUGIN_ROOT", None)
     env["HOME"] = str(home)
     env["CURSOR_PROJECT_DIR"] = str(project_root)
     return subprocess.run(
@@ -62,6 +64,15 @@ def test_launcher_captures_a_transcript_event(tmp_path: Path) -> None:
     assert result.returncode == 0
     log = tmp_path / ".cursor" / "chat-transcripts" / f"{REAL_ID}.jsonl"
     assert "captured through the launcher" in log.read_text(encoding="utf-8")
+
+
+def test_launcher_publishes_the_plugin_root_it_resolved(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    root = _install_plugin(home)
+    published = Path("/tmp/cursor-hook-debug/plugin-root")
+    published.unlink(missing_ok=True)
+    _run(AUDIT, {"conversation_id": REAL_ID, "hook_event_name": "stop"}, tmp_path, home)
+    assert published.read_text(encoding="utf-8").strip() == str(root)
 
 
 def test_launcher_syncs_the_cli_that_session_start_would_have(tmp_path: Path) -> None:
@@ -207,16 +218,13 @@ def test_two_hook_sources_capture_one_line(tmp_path: Path) -> None:
     assert len(lines) == 1
 
 
-def test_cloud_hooks_json_omits_the_orchestrator_inject() -> None:
-    # beforeSubmitPrompt never fires in the cloud, and unlike a capture the
-    # inject cannot dedupe itself, so registering it only risks a double inject.
+def test_cloud_hooks_json_registers_the_orchestrator_inject() -> None:
+    # beforeSubmitPrompt does fire in the cloud, once a session gets far enough
+    # to submit a prompt, so the orchestrator context has to be registered.
+    # The inject claims one delivery per generation, so a double source is safe.
     config = json.loads(CLOUD_HOOKS.read_text(encoding="utf-8"))
-    targets = {
-        entry["command"]
-        for entries in config["hooks"].values()
-        for entry in entries
-    }
-    assert not any("main-agent-orchestrator-inject" in t for t in targets)
+    targets = [entry["command"] for entry in config["hooks"]["beforeSubmitPrompt"]]
+    assert any("main-agent-orchestrator-inject" in t for t in targets)
 
 
 def _cloud_without_plugin(home: Path) -> None:

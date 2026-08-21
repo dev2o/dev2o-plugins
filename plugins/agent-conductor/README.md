@@ -97,17 +97,13 @@ Both files must be tracked by git, since a cloud agent clones the repo fresh. Ma
 
 ### What actually fires in the cloud
 
-Measured on run `bc-46559db3` across 131 captured events, with the project shim installed. Cursor's docs list more events than this as supported.
+`sessionStart` never fires; Cursor documents that. Everything else the plugin registers has now been observed firing on a cloud VM, including `preToolUse` on `Task`, `beforeSubmitPrompt`, `afterAgentThought` and `subagentStop`.
 
-| Fires | Never fires |
-|---|---|
-| `beforeReadFile`, `beforeShellExecution`, `afterShellExecution`, `preToolUse` (Grep only), `postToolUse`, `postToolUseFailure`, `afterFileEdit` | `sessionStart`, `beforeSubmitPrompt`, `preToolUse` on `Task`, `afterAgentResponse`, `afterAgentThought`, `preCompact`, `subagentStop` |
+Read a short session's absences carefully. Measure early enough and only `beforeShellExecution`, `afterShellExecution` and `beforeReadFile` have appeared, because the others need the session to do the triggering thing first: `preToolUse` on `Task` needs a subagent spawn, `subagentStop` needs one to finish, `afterFileEdit` needs an edit. Two runs concluded those events were dead when the session had simply not reached them yet. Judge delivery from `cloud-launcher.log` after real work, not from a first look.
 
-Two consequences. `preToolUse` on `Task` never runs, so nothing hook-side stamps the advisor spawn line, which is why the Executor stamps it and why that instruction lives in the `advisor` agent description rather than only in `__agent-main.md`. And `beforeSubmitPrompt` never runs, so the orchestrator context in `__agent-main.md` is not injected on a cloud VM at all; a project that wants those rules there has to put them somewhere the agent reads on its own, such as a committed `AGENTS.md`.
+Because `preToolUse` on `Task` is not guaranteed to have fired by the time the Executor spawns the advisor, the Executor stamps the spawn line itself and the hook validates the stamp. That instruction is in the `advisor` agent description as well as `__agent-main.md`, so it survives whether or not the inject reached the Executor.
 
-`cloud/hooks.json` still registers the capture events that never fire. They cost nothing when absent, and registering them is how the next run finds out that Cursor started delivering them. It does not register the orchestrator inject: that event never fires in the cloud, and unlike a capture an inject cannot recognize its own duplicate, so registering it would only risk injecting the block twice on desktop.
-
-The launcher runs on desktop too, alongside the plugin's own hooks, which means both deliver the same event. `audit.sh` drops a line identical to the one before it, timestamp aside, so a doubled capture writes once. That is deliberate: a cloud VM with no plugins installed writes no plugin manifest, so there is no reliable way to tell cloud from desktop, and an environment guess that fails silently is worse than an idempotent write.
+The launcher also runs on desktop, alongside the plugin's own hooks, so both deliver the same event. `audit.sh` drops a line identical to the one before it, timestamp aside, and the orchestrator inject claims one delivery per generation, so a doubled event captures once and injects once. That is deliberate: a cloud VM with no plugins installed writes no plugin manifest, and a project-side installer can write one anywhere, so there is no reliable way to tell cloud from desktop. An environment guess that fails silently is worse than an idempotent write.
 
 ### Verifying a cloud run
 
@@ -115,6 +111,12 @@ This repository installs the launcher on itself, so a cloud agent started here e
 
 ```bash
 plugins/agent-conductor/cloud/verify-cloud-hooks.sh
+```
+
+In a project that only has the plugin installed, run the copy belonging to the plugin the launcher actually resolved. A VM can hold several cached revisions, and an older verifier grades a healthy session differently:
+
+```bash
+bash "$(cat /tmp/cursor-hook-debug/plugin-root)/cloud/verify-cloud-hooks.sh"
 ```
 
 It reports whether any hook ran, which events reached the launcher, whether the CLI was synced, whether this session was captured, and prints the resulting brief.
