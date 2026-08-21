@@ -1,6 +1,6 @@
 # Agent Conductor
 
-**Every instruction you write reaches every agent you run. These reach the one you meant.**
+**Every instruction you write reaches every agent you run. These files reach just the one you meant.**
 
 Cursor has two places for instructions that apply on every turn, a rule with `alwaysApply` and an `AGENTS.md`. Both are broadcasts. The agent you are talking to reads them. So does every subagent it spawns.
 
