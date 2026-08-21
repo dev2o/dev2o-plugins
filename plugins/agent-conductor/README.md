@@ -176,13 +176,14 @@ Default show hides thinking; see the footer for optional flags.
 | --- | --- |
 | Known token formats | `sk-`, `ghp_`, `gho_`, `gha_`, `github_pat_`, `xoxb-` and friends, `ops_`, JWTs |
 | Assignments that name a secret | any `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*API*` variable, value replaced with `[REDACTED]` |
-| File contents | dropped from `beforeReadFile`, and `old_string` and `new_string` dropped from every edit |
+| Fields scanned for secrets | strings nested under `command`, `prompt`, `tool_input`, `tool_output`, `output`, `text`, and `error_message` |
+| File contents | `content` dropped from `beforeReadFile`; `old_string` and `new_string` dropped from `afterFileEdit` edits and top-level `preToolUse` tool input |
 | Read and fetch tool output | replaced with a placeholder |
 | Shell output | last 1200 characters kept, the rest dropped |
 | Local identifiers | `session_id`, `workspace_roots` and `transcript_path` deleted, `user_email` cut to the part before the `@` |
 | Long strings | capped at 16384 characters |
 
-Redaction runs over agent text, tool output, shell output, and error messages. It does not run over the text of the shell commands themselves, so a secret written literally into a command survives capture. Read a file before you commit it.
+Redaction runs recursively over the fields listed above, so matching secrets in shell commands, user prompts, and nested tool arguments are replaced without removing the surrounding text. Other tool argument keys can still carry file bodies, fields outside that list are not scanned, and sensitive text that does not match a known pattern survives. The raw payload dumps under `/tmp/cursor-hook-debug` are also unsanitized. Read each transcript before you commit it.
 
 Two things narrow the blast radius. A shipped `.cursorignore` stops agents from reading the `.jsonl` files directly. `beforeShellExecution` denies commands whose job is dumping the environment, meaning `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`. Read that second one as a guardrail rather than a boundary, since it matches command shapes and an agent that wants the file badly enough can spell the read another way.
 

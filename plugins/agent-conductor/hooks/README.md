@@ -38,9 +38,9 @@ Chat transcripts and tool payloads can swell to hundreds of megabytes during lon
 * **`shell-secrets-deny.sh` (`beforeShellExecution`):** Intercepts subagent shell execution before it runs. Explicitly blocks commands that attempt to dump environment variables (`env`, `printenv`, `export -p`) or read raw secret files (`cat .env`, `grep ... .env`), forcing subagents to test credentials safely via dedicated tool commands (e.g., `command -v op`).
 
 ### Audit Logging & Redaction
-* **`scrub.jq`:** The scrubbing filter applied to every transcript line. It makes one pass per pattern over the strings under `tool_output`, `output`, `text` and `error_message`, and it does not touch `command`, `prompt` or `tool_input`.
+* **`scrub.jq`:** The scrubbing filter applied to every transcript line. It makes one pass per pattern over strings under `command`, `prompt`, `tool_input`, `tool_output`, `output`, `text`, and `error_message`.
   * Uses Oniguruma `\K` (keep match start) regex patterns to strip API keys (`sk-...`, `github_pat_...`, AWS/Slack tokens, JWTs) while preserving variable names.
-  * Uses recursive traversal (`walk/1`) to guarantee that structured JSON tool outputs (objects and arrays) are completely scrubbed without type-trap crashes.
+  * Uses recursive traversal (`walk/1`) to scrub strings nested in structured tool input and output without type-trap crashes.
   * Automatically truncates massive string payloads (capped at 16KB) and drops bulky tool read bodies to prevent audit log bloat.
 
 ### Transcript Browsing CLI (`_transcripts.py`)

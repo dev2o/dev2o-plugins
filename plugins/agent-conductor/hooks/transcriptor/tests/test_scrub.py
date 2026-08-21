@@ -81,6 +81,40 @@ def test_scrub_jq_present() -> None:
     assert SCRUB_JQ.is_file()
 
 
+def test_audit_before_shell_execution_redacts_command(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "before_shell_execution_secret.json").read_text())
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "85189265-b5cb-454b-b201-bc4532062073.jsonl"
+    row = _read_jsonl(out)[0]
+    assert "command-secret-value" not in row["command"]
+    assert "API_TOKEN=[REDACTED]" in row["command"]
+    assert "keep-command-context" in row["command"]
+
+
+def test_audit_before_submit_prompt_redacts_prompt(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "before_submit_prompt_secret.json").read_text())
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "29767380-b541-41b6-a58a-639adea36baa.jsonl"
+    row = _read_jsonl(out)[0]
+    assert "prompt-secret-value" not in row["prompt"]
+    assert "PASSWORD=[REDACTED]" in row["prompt"]
+    assert "keep prompt context" in row["prompt"]
+
+
+def test_audit_pre_tool_use_redacts_tool_input(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "pre_tool_use_secret.json").read_text())
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "4d940726-0312-4917-a152-d25dc9370e3f.jsonl"
+    row = _read_jsonl(out)[0]
+    tool_input = row["tool_input"]
+    note = tool_input["metadata"]["note"]
+    assert "tool-input-secret-value" not in note
+    assert "API_KEY=[REDACTED]" in note
+    assert "keep tool input context" in note
+    assert "old_string" not in tool_input
+    assert "new_string" not in tool_input
+
+
 def test_audit_post_tool_use_redacts_env_values(tmp_path: Path) -> None:
     payload = json.loads((FIXTURES / "post_tool_use_env_leak.json").read_text())
     _run_audit(tmp_path, payload)

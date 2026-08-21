@@ -45,6 +45,9 @@ if type == "object" then
   | if .hook_event_name == "afterFileEdit" and (.edits | type) == "array" then
       .edits |= map(if type == "object" then del(.old_string, .new_string) else . end)
     else . end
+  | if .hook_event_name == "preToolUse" and (.tool_input | type) == "object" then
+      .tool_input |= del(.old_string, .new_string)
+    else . end
   # Drop bulky tool output on read-like postToolUse (with string type-guard on tool_name)
   | if ((.tool_name | strings) // "" | test("read|fetch"; "i")) and .hook_event_name == "postToolUse" then
       if .tool_output != null then 
@@ -63,6 +66,9 @@ if type == "object" then
       )
     else . end
   # Apply redaction recursively across all potential text or structured payloads
+  | if .command != null then .command |= maybe_redact else . end
+  | if .prompt != null then .prompt |= maybe_redact else . end
+  | if .tool_input != null then .tool_input |= maybe_redact else . end
   | if .tool_output != null then .tool_output |= maybe_redact else . end
   | if .output != null then .output |= maybe_redact else . end
   | if .text != null then .text |= maybe_redact else . end
