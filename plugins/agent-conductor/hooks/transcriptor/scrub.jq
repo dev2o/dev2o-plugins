@@ -4,7 +4,7 @@ def cap_length($max):
     (.[:$max] + "... [TRUNCATED: original length \(length) bytes]") 
   else . end;
 
-# 2. Optimized single-pass secret scrubbing (O(1) complexity, zero ReDoS, zero recursion)
+# 2. Secret scrubbing, one gsub pass per pattern with no backtracking blowup.
 # Leverages Oniguruma \K to reset match start, replacing only the secret while preserving keys.
 def redact_secrets:
   if type == "string" then

@@ -180,13 +180,13 @@ Default show hides thinking; see the footer for optional flags.
 | Assignments that name a secret | any `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*API*` variable, value replaced with `[REDACTED]` |
 | File contents | dropped from `beforeReadFile`, and `old_string` and `new_string` dropped from every edit |
 | Read and fetch tool output | replaced with a placeholder |
-| Shell output | last 1200 bytes kept, the rest dropped |
+| Shell output | last 1200 characters kept, the rest dropped |
 | Local identifiers | `session_id`, `workspace_roots` and `transcript_path` deleted, `user_email` cut to the part before the `@` |
-| Long strings | capped at 16 KB |
+| Long strings | capped at 16384 characters |
 
 Redaction runs over agent text, tool output, shell output, and error messages. It does not run over the text of the shell commands themselves, so a secret written literally into a command survives capture. Read a file before you commit it.
 
-Two things narrow the blast radius. A shipped `.cursorignore` stops agents from reading the `.jsonl` files directly. `beforeShellExecution` denies commands whose job is dumping the environment, meaning `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`.
+Two things narrow the blast radius. A shipped `.cursorignore` stops agents from reading the `.jsonl` files directly. `beforeShellExecution` denies commands whose job is dumping the environment, meaning `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`. Read that second one as a guardrail rather than a boundary, since it matches command shapes and an agent that wants the file badly enough can spell the read another way.
 
 ## When a hook fails
 
@@ -196,6 +196,8 @@ Every hook in this plugin fails open. A missing dependency, an unwritable direct
 tail -f /tmp/cursor-hook-debug/error.log
 cat /tmp/cursor-hook-debug/latest-beforeSubmitPrompt-payload.json
 ```
+
+Those payload dumps are what Cursor sent, before any scrubbing. Treat `/tmp/cursor-hook-debug` as local and sensitive, unlike the transcripts.
 
 For the design rules these scripts hold themselves to, read [`hooks/README.md`](hooks/README.md).
 
