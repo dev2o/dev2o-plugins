@@ -19,7 +19,7 @@ python3 .cursor/chat-transcripts/_transcripts.py brief "<your spawn line verbati
 
 Quote the spawn line unchanged. Do not extract the id. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file.
 
-If that path does not exist, run the plugin's own copy of the CLI instead:
+If that command fails, whether the path is missing or a stale project copy has no `brief` verb, run the plugin's own copy of the CLI instead:
 
 ```bash
 python3 "$(ls -1t ~/.cursor/plugins/cache/*/*/*/hooks/transcriptor/transcripts.py | head -1)" brief "<your spawn line verbatim>"
