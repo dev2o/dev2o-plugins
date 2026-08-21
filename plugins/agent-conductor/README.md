@@ -59,9 +59,9 @@ The plugin ships a default `__agent-main.md`. Override it in your project, per f
 
 2. Open a new chat and send any prompt.
 
-3. Ask the agent for the codename. It answers BLUE HERON, because the hook handed it the file.
+3. Ask the agent for the codename. You should get BLUE HERON back, which means the hook's context reached it.
 
-4. Spawn a subagent and ask it the same question. It has never heard of BLUE HERON, and it edits files instead of delegating.
+4. Spawn a subagent and ask it the same question. It knows nothing about BLUE HERON, and it edits files instead of delegating.
 
 5. Read what the hook decided, one line per prompt.
 
@@ -84,7 +84,7 @@ Unknown sessions get injected. A broken registry costs you subagent isolation, n
 
 The two paths do not carry the same risk, so it is worth knowing which is which.
 
-The subagent path rewrites the Task prompt through `updated_input` on `preToolUse`. Cursor documents that field and honours it.
+The subagent path rewrites the Task prompt through `updated_input` on `preToolUse`. Cursor documents that field and honors it.
 
 The main-agent path returns `additional_context` on `beforeSubmitPrompt`. Cursor's hooks reference lists only `continue` and `user_message` as output for that hook, and reports on the Cursor forum say an unknown field passes validation and is then dropped before the model sees it, with `sessionStart` named as the only hook where `additional_context` works end to end. Cursor's reference is out of date in the other direction too, since it lists two input fields for the hook while the real payload carries twelve, so neither the reference nor a forum thread settles what your build does.
 
