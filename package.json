@@ -1,0 +1,21 @@
+{
+  "name": "dev2o-plugins",
+  "version": "0.1.24",
+  "private": true,
+  "description": "Cursor plugin marketplace for dev2o plugins",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dev2o/dev2o-plugins.git"
+  },
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate-plugins.mjs && node scripts/validate-docs.mjs",
+    "validate:plugins": "node scripts/validate-plugins.mjs",
+    "validate:docs": "node scripts/validate-docs.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}
