@@ -117,6 +117,9 @@ def test_hook_advisor_mismatched_id_denied(tmp_path: Path) -> None:
     out = json.loads(proc.stdout)
     assert out["permission"] == "deny"
     assert "updated_input" not in out
+    # The deny has to tell the Executor to restamp. Telling it to send a bare
+    # "Advise." would walk it back into the unstamped, blind case.
+    assert "CURSOR_CONVERSATION_ID" in out["agent_message"]
     assert POISON not in proc.stdout
     assert POISON not in json.dumps(out)
 
