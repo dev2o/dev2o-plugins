@@ -54,6 +54,18 @@ if [[ -z "$CONTEXT" ]]; then
   exit 0
 fi
 
+# The plugin's own hooks and a project launcher can both deliver this event, and
+# unlike a capture an inject cannot recognize its own duplicate after the fact.
+# One claim per prompt, keyed by conversation and generation.
+CLAIM_ID=$(printf '%s\n' "$INPUT" | jq -r '[(.conversation_id // empty), (.generation_id // empty)] | join("-")' 2>/dev/null || echo "")
+if [[ -n "$CLAIM_ID" && "$CLAIM_ID" != "-" && "$CLAIM_ID" != *".."* && "$CLAIM_ID" != *"/"* ]]; then
+  CLAIM_FILE="$DUMP_DIR/injected-$CLAIM_ID"
+  if ! (set -o noclobber; : > "$CLAIM_FILE") 2>/dev/null; then
+    echo '{"continue": true}'
+    exit 0
+  fi
+fi
+
 # 6. Check character length and construct final JSON payload
 MAX_INJECT_CHARS=9000
 CONTEXT_LEN=${#CONTEXT}
