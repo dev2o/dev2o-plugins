@@ -250,6 +250,32 @@ const checks = [
     },
   },
   {
+    name: "both READMEs introduce the routing before the secondary features",
+    run() {
+      const main = capture(
+        contextLib,
+        /config_file "(__agent-[a-z]+\.md)"/,
+        "the main agent config filename"
+      );
+      const failures = [];
+      for (const [label, body] of [
+        ["the root README", rootReadme],
+        ["the plugin README", pluginReadme],
+      ]) {
+        const core = body.indexOf(main);
+        if (core === -1) continue;
+        for (const feature of ["advisor", "MEMORY.md", "transcript"]) {
+          const at = body.indexOf(feature);
+          if (at !== -1 && at < core)
+            failures.push(
+              `${label} introduces ${feature} before it names ${main}`
+            );
+        }
+      }
+      return failures;
+    },
+  },
+  {
     name: "the declared license is a license the repo actually ships",
     run() {
       const declared = readJSON(`${plugin}/.cursor-plugin/plugin.json`).license;
