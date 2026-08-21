@@ -72,6 +72,14 @@ _deny_advisor_mismatch() {
   exit 0
 }
 
+# Every path below records the prompt the child will actually receive, so the
+# beforeSubmitPrompt hook can tell that child apart from a main agent.
+allow_unchanged() {
+  record_spawn "$ORIG_PROMPT"
+  echo '{"permission": "allow"}'
+  exit 0
+}
+
 if [[ "$SUBAGENT_TYPE" == "advisor" ]]; then
   incoming="$(_trim "$ORIG_PROMPT")"
   incoming="$(_strip_matching_quotes "$incoming")"
@@ -91,21 +99,18 @@ if [[ "$SUBAGENT_TYPE" == "advisor" ]]; then
     fi
   fi
   if ! _is_safe_cid "$CONVERSATION_ID"; then
-    echo '{"permission": "allow"}'
-    exit 0
+    allow_unchanged
   fi
   NEW_PROMPT="Advise. ${CONVERSATION_ID}"
 elif [[ "$SUBAGENT_TYPE" == "exe-advisor" ]]; then
-  echo '{"permission": "allow"}'
-  exit 0
+  allow_unchanged
 else
   if ! command -v build_subagent_context >/dev/null 2>&1; then
     fail_open "Function 'build_subagent_context' not found after sourcing $CONTEXT_LIB"
   fi
   CONTEXT=$(build_subagent_context "$SUBAGENT_TYPE" "$CONVERSATION_ID" "$PARENT_CONVERSATION_ID" "$SESSION_ID" 2>/dev/null || echo "")
   if [[ -z "$CONTEXT" ]]; then
-    echo '{"permission": "allow"}'
-    exit 0
+    allow_unchanged
   fi
   NEW_PROMPT="${CONTEXT}
 
@@ -121,5 +126,6 @@ if ! OUTPUT_JSON=$(jq -nc \
   fail_open "Failed to construct final JSON payload with jq"
 fi
 
+record_spawn "$NEW_PROMPT"
 echo "$OUTPUT_JSON"
 exit 0
