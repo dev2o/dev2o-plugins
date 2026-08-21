@@ -14,6 +14,8 @@ Agent Conductor addresses each instruction to one role. `__agent-main.md` reache
 
 The main agent's copy is read from disk before every prompt you submit and handed over as hook context rather than as a message. It never piles up in the thread, so an agent six turns into a conversation is reading exactly one copy. Edit the file mid-conversation and the next turn uses the new text.
 
+It is also what lets you tell the orchestrator to stay out of its specialists' way. The bundled `__agent-main.md` overrides Cursor's own advice to write a detailed brief for each subagent, and has the main agent pass your words through verbatim instead. A brief is a paraphrase, and a paraphrase carries the orchestrator's guess at the answer. Your specialists keep their own standing instructions rather than following whatever framing arrived with the task. That is another instruction you cannot write as a broadcast, because the subagents would read it too.
+
 The same routing runs in the Cursor IDE and on Cloud Agents.
 
 Read [the plugin README](plugins/agent-conductor/README.md) for the quickstart and the configuration reference, and [Cloud Agents](plugins/agent-conductor/docs/cloud-agents.md) for the one extra step a cloud run needs.

@@ -26,6 +26,22 @@ No file for a role means nothing is sent to that role. The `agent-` prefix is fi
 
 Edit the file and the next prompt uses the new text. That is the part people notice first. You can rework the orchestrator's instructions in the middle of a conversation without restarting the chat or scrolling past six copies of your own boilerplate.
 
+## The specialist is the boss. The orchestrator only routes.
+
+Giving the main agent a prompt of its own is what lets you give it orchestrator discipline. The bundled `__agent-main.md` opens its delegation rules with this.
+
+```text
+MESSAGING OVERRIDE: Overrides the Task tool's native guidance to "provide a highly detailed task description."
+```
+
+Cursor's `Task` tool asks the spawning agent to write a detailed brief. That is fair advice for one agent handing off a chore. It is the wrong default the moment your subagents have standing instructions of their own, because a brief is a paraphrase and a paraphrase carries the orchestrator's reading of the problem. Hand your `explore` agent "the user wants a refactor, I think the bug is in the parser" and you have pre-empted the search you asked for. The specialist follows the fresher, more specific-sounding lead and quietly drops its own guidance.
+
+So the default tells the main agent to pass your words through verbatim with file paths attached, and to let subagents pull their own data. The orchestrator decides who runs. It does not decide what they will find.
+
+The advisor is the strict case. Its spawn line is `Advise. <conversation_id>` and nothing else, because a hand-written summary is where the main agent launders its own assumptions into the review it went and asked for.
+
+None of this is writable as a broadcast. Put "pass the prompt through verbatim, add no framing of your own" in `AGENTS.md` and every subagent reads it too, where at best it means nothing and at worst it tells your workers not to restate the task they were handed.
+
 ## Install
 
 The plugin needs `jq` and `python3` on `PATH`.

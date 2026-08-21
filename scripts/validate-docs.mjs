@@ -35,6 +35,9 @@ const injectHook = read(
 const auditHook = read(`${plugin}/hooks/transcriptor/audit.sh`);
 const denyHook = read(`${plugin}/hooks/transcriptor/shell-secrets-deny.sh`);
 const transcriptsCli = read(`${plugin}/hooks/transcriptor/transcripts.py`);
+const mainAgentConfig = read(
+  `${plugin}/hooks/context-injector/config/__agent-main.md`
+);
 
 function capture(source, pattern, label) {
   const match = source.match(pattern);
@@ -247,6 +250,21 @@ const checks = [
       return existsSync(resolve(root, plugin, logo))
         ? []
         : [`plugin.json points at a missing logo, ${logo}`];
+    },
+  },
+  {
+    name: "what the README quotes from the bundled prompt is in the bundled prompt",
+    run() {
+      const quoted = [
+        ...pluginReadme.matchAll(/```text\n([^`]+)\n```/g),
+      ].flatMap(([, block]) =>
+        block.split("\n").filter((line) => /^MESSAGING OVERRIDE/.test(line))
+      );
+      if (quoted.length === 0)
+        return ["the plugin README no longer quotes the delegation override"];
+      return quoted
+        .filter((line) => !mainAgentConfig.includes(line))
+        .map((line) => `__agent-main.md does not contain "${line}"`);
     },
   },
   {
