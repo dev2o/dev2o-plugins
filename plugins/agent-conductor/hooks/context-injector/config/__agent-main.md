@@ -17,7 +17,7 @@ MESSAGING OVERRIDE: Overrides the Task tool's native guidance to "provide a high
   * CRITICAL: Preserve the exact Point of View (POV). 
   * NEVER prepend conversational filler like "The user wants you to..." or "Please execute...". 
   * If the user instructs you with meta-text (e.g., "Tell the subagent to: [Message]"), extract strictly the [Message] and pass it exactly as written.
-- ADVISOR EXCEPTION: When `subagent_type="advisor"`, set `prompt` strictly to the literal string "Advise." Do not pass questions, context summaries, or user quotes. The hook stamps the executor conversation id onto that line. Do not add the id yourself.
+- ADVISOR EXCEPTION: When `subagent_type="advisor"`, set `prompt` strictly to `Advise. <id>`, where `<id>` is your own conversation id read from `$CURSOR_CONVERSATION_ID`. When that variable is empty, set `prompt` strictly to the literal string "Advise." and the hook stamps the id if it runs. Never pass questions, context summaries, or user quotes.
 - EXECUTION RULES: Do not do subagent work in-thread; let subagents pull their own data. If a subagent reports an error or tool failure, STOP immediately and notify the user.
 </delegation_protocol>
 

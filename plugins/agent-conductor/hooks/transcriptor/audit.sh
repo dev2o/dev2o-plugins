@@ -22,12 +22,6 @@ if [[ -z "${CURSOR_PROJECT_DIR:-}" ]]; then
   exit 0
 fi
 
-LOG_DIR="$CURSOR_PROJECT_DIR/.cursor/chat-transcripts"
-if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
-  echo "$(date -u): FAILED - Cannot create directory $LOG_DIR. Permission issue?" >> "$DUMP_DIR/error.log"
-  exit 0
-fi
-
 # 3. Explicit Dependency Check (Log to /tmp instead of black-hole >&2)
 if ! command -v jq >/dev/null 2>&1; then
   echo "$(date -u): FAILED - 'jq' is not installed in PATH: $PATH" >> "$DUMP_DIR/error.log"
@@ -47,6 +41,12 @@ if [[ "$conversation_id" == *".."* ]] || [[ "$conversation_id" == *"/"* ]]; then
   exit 0
 fi
 
+LOG_DIR="$CURSOR_PROJECT_DIR/.cursor/chat-transcripts"
+if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
+  echo "$(date -u): FAILED - Cannot create directory $LOG_DIR. Permission issue?" >> "$DUMP_DIR/error.log"
+  exit 0
+fi
+
 LOG_FILE="$LOG_DIR/${conversation_id}.jsonl"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRUB_JQ="$SCRIPT_DIR/scrub.jq"
@@ -56,25 +56,32 @@ if [[ ! -f "$SCRUB_JQ" ]]; then
   exit 0
 fi
 
-# 5. Deduplication Check (No locking, simple inline read)
-hook_event=$(printf '%s\n' "$json_input" | jq -r '.hook_event_name // empty' 2>/dev/null || echo "")
-if [[ "$hook_event" == "afterAgentThought" && -f "$LOG_FILE" ]]; then
+# 5. Scrub once, so the same line is both compared and written.
+timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+new_line=$(printf '%s\n' "$json_input" | jq -c --arg ts "$timestamp" -f "$SCRUB_JQ" 2>/dev/null)
+if [[ -z "$new_line" ]]; then
+  echo "$(date -u): FAILED - jq scrub produced nothing for $LOG_FILE" >> "$DUMP_DIR/error.log"
+  exit 0
+fi
+
+# 6. Deduplication (no locking, simple inline read). A repeated thought is one
+# source of duplicates; two hook sources delivering the same event is the other,
+# which happens whenever a project launcher runs alongside the plugin's own
+# hooks. Both look the same here: an identical previous line, timestamp aside.
+new_key=$(printf '%s' "$new_line" | jq -Sc 'del(.ts)' 2>/dev/null || echo "")
+if [[ -n "$new_key" && -f "$LOG_FILE" ]]; then
   prev_line=$(tail -n 1 "$LOG_FILE" 2>/dev/null || echo "")
   if [[ -n "$prev_line" ]]; then
-    is_dup=$(jq -n -c \
-      --argjson prev "$prev_line" \
-      --argjson cur "$json_input" \
-      '($prev.hook_event_name == "afterAgentThought") and ($prev.text == $cur.text)' 2>/dev/null || echo "false")
-    if [[ "$is_dup" == "true" ]]; then
+    prev_key=$(printf '%s' "$prev_line" | jq -Sc 'del(.ts)' 2>/dev/null || echo "")
+    if [[ -n "$prev_key" && "$prev_key" == "$new_key" ]]; then
       exit 0
     fi
   fi
 fi
 
-# 6. Append to transcript. If it fails, log the failure to /tmp!
-timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-if ! printf '%s\n' "$json_input" | jq -c --arg ts "$timestamp" -f "$SCRUB_JQ" >> "$LOG_FILE" 2>/dev/null; then
-  echo "$(date -u): FAILED - jq scrub or append failed for $LOG_FILE" >> "$DUMP_DIR/error.log"
+# 7. Append to transcript. If it fails, log the failure to /tmp!
+if ! printf '%s\n' "$new_line" >> "$LOG_FILE" 2>/dev/null; then
+  echo "$(date -u): FAILED - append failed for $LOG_FILE" >> "$DUMP_DIR/error.log"
 fi
 
 exit 0
