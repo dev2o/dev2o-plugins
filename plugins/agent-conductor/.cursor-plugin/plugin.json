@@ -1,13 +1,26 @@
 {
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
-  "version": "0.1.23",
-  "description": "Advisor subagent with in-thread advisor-check gating, scrubbed transcript capture with a browse CLI, persistent agent memory, and per-subagent context-injection hooks",
+  "version": "0.1.24",
+  "description": "Standing instructions addressed to one agent instead of broadcast to all of them. The main agent gets its own prompt, each subagent type gets its own. Also ships a gated advisor subagent, orchestrator memory, and scrubbed transcripts with a browse CLI.",
   "skills": "./skills/",
   "author": {
     "name": "dev2o"
   },
-  "keywords": ["orchestrator", "hooks", "subagents", "transcripts", "memory", "advisor"],
+  "homepage": "https://github.com/dev2o/dev2o-plugins/tree/main/plugins/agent-conductor",
+  "repository": "https://github.com/dev2o/dev2o-plugins",
+  "keywords": [
+    "orchestrator",
+    "context-injection",
+    "system-prompt",
+    "agents-md",
+    "rules",
+    "subagents",
+    "hooks",
+    "advisor",
+    "memory",
+    "transcripts"
+  ],
   "agents": "./agents/",
   "hooks": "./hooks/hooks.json"
 }
