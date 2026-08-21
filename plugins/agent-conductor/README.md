@@ -95,4 +95,16 @@ Both files must be tracked by git, since a cloud agent clones the repo fresh. Ma
 
 `cloud/hooks.json` mirrors the plugin's own [`hooks/hooks.json`](hooks/hooks.json) minus `sessionStart`. Keep them in step when you add an event.
 
+### Verifying a cloud run
+
+This repository installs the launcher on itself, so a cloud agent started here exercises the shim on the first tool call. From the project root:
+
+```bash
+plugins/agent-conductor/cloud/verify-cloud-hooks.sh
+```
+
+It reports whether any hook ran, which events reached the launcher, whether the CLI was synced, whether this session was captured, and prints the resulting brief. `/tmp/cursor-hook-debug/cloud-launcher.log` holds one line per dispatch, which is the only record of which events a cloud agent actually delivers.
+
+The line to watch is `preToolUse on Task`. If it never reaches the stamping hook, the Executor's own `Advise. <id>` stamp is carrying the transport by itself, which is the case the fallback exists for.
+
 Bundled launcher: [`cloud/`](cloud/)

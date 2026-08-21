@@ -2,7 +2,11 @@ __pycache__/
 .venv/
 .pytest_cache/
 *.pyc
-.cursor
+.cursor/*
+!.cursor/hooks.json
+!.cursor/hooks/
+.cursor/hooks/*
+!.cursor/hooks/agent-conductor-hook.sh
 # Hook debug (local only)
 **/hooks/context-injector/.debug
 **/hooks/context-injector/hooks-debug.log
