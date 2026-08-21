@@ -104,12 +104,32 @@ def test_audit_after_agent_response_redacts_secrets(tmp_path: Path) -> None:
     assert "[REDACTED]" in row["text"]
 
 
-def test_audit_after_shell_execution_drops_output(tmp_path: Path) -> None:
+def test_audit_after_shell_execution_keeps_short_output(tmp_path: Path) -> None:
     payload = json.loads((FIXTURES / "after_shell_execution.json").read_text())
     _run_audit(tmp_path, payload)
     row = _read_jsonl(tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl")[0]
-    assert row["output"] == "[OMITTED: Shell output dropped to prevent audit log bloat]"
+    assert row["output"] == "LINE1\nLINE2\nLINE3"
     assert row["command"] == "cat huge-file.txt"
+
+
+def test_audit_after_shell_execution_keeps_the_tail_of_long_output(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "after_shell_execution.json").read_text())
+    payload["output"] = "head-of-output\n" + ("x" * 4000) + "\nERROR: the useful part"
+    _run_audit(tmp_path, payload)
+    row = _read_jsonl(tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl")[0]
+    assert row["output"].startswith("[TRUNCATED: kept the last 1200 of ")
+    assert "ERROR: the useful part" in row["output"]
+    assert "head-of-output" not in row["output"]
+    assert len(row["output"]) < 1400
+
+
+def test_audit_shell_output_is_still_redacted(tmp_path: Path) -> None:
+    payload = json.loads((FIXTURES / "after_shell_execution.json").read_text())
+    payload["output"] = "OP_SERVICE_ACCOUNT_TOKEN=super-secret-value-1234567890"
+    _run_audit(tmp_path, payload)
+    row = _read_jsonl(tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl")[0]
+    assert "super-secret-value" not in row["output"]
+    assert "[REDACTED]" in row["output"]
 
 
 def test_audit_after_file_edit_drops_edit_bodies(tmp_path: Path) -> None:

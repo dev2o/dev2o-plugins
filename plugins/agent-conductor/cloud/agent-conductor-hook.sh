@@ -89,6 +89,10 @@ fi
 SCRIPT="$PLUGIN_ROOT/$TARGET"
 [[ -f "$SCRIPT" ]] || fail_open "Plugin script missing at $SCRIPT"
 
+# Published so nothing else has to repeat this resolution. A VM can hold several
+# cached revisions, and picking the wrong one means running a stale tool.
+printf '%s\n' "$PLUGIN_ROOT" > "$DUMP_DIR/plugin-root" 2>/dev/null || true
+
 export CURSOR_PLUGIN_ROOT="$PLUGIN_ROOT"
 # A project hook runs with the working directory at the project root, so this is
 # a resolved path rather than a guess. The delegated scripts refuse to write
