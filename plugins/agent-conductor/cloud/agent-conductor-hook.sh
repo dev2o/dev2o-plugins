@@ -56,7 +56,9 @@ SCRIPT="$PLUGIN_ROOT/$TARGET"
 if [[ -n "${CURSOR_PROJECT_DIR:-}" ]]; then
   CLI_SRC="$PLUGIN_ROOT/hooks/transcriptor/transcripts.py"
   CLI_DEST="$CURSOR_PROJECT_DIR/.cursor/chat-transcripts/_transcripts.py"
-  if [[ -f "$CLI_SRC" ]] && [[ "$CLI_SRC" -nt "$CLI_DEST" || ! -f "$CLI_DEST" ]]; then
+  # Compared by content, not mtime: a clone stamps a stale committed copy with a
+  # fresh timestamp, and that copy may predate the brief verb the advisor calls.
+  if [[ -f "$CLI_SRC" ]] && ! cmp -s "$CLI_SRC" "$CLI_DEST"; then
     if mkdir -p "$(dirname "$CLI_DEST")" 2>/dev/null; then
       cp -f "$CLI_SRC" "$CLI_DEST" 2>/dev/null || \
         echo "$(date -u): WARN (cloud launcher) - Failed to sync CLI to $CLI_DEST" >> "$DUMP_DIR/error.log"

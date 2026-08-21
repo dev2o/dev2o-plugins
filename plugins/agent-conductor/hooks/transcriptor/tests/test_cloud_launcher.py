@@ -74,6 +74,16 @@ def test_launcher_syncs_the_cli_that_session_start_would_have(tmp_path: Path) ->
     assert "<brief" in brief.stdout
 
 
+def test_launcher_replaces_a_stale_cli_with_a_fresh_timestamp(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    _install_plugin(home)
+    cli = tmp_path / ".cursor" / "chat-transcripts" / "_transcripts.py"
+    cli.parent.mkdir(parents=True)
+    cli.write_text("# committed before brief existed\n", encoding="utf-8")
+    _run(AUDIT, {"conversation_id": REAL_ID, "hook_event_name": "stop"}, tmp_path, home)
+    assert "brief" in cli.read_text(encoding="utf-8")
+
+
 def test_launcher_forwards_the_task_stamp(tmp_path: Path) -> None:
     home = tmp_path / "home"
     _install_plugin(home)
