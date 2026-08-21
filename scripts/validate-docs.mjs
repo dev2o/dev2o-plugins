@@ -35,6 +35,9 @@ const injectHook = read(
 const auditHook = read(`${plugin}/hooks/transcriptor/audit.sh`);
 const denyHook = read(`${plugin}/hooks/transcriptor/shell-secrets-deny.sh`);
 const transcriptsCli = read(`${plugin}/hooks/transcriptor/transcripts.py`);
+const mainAgentConfig = read(
+  `${plugin}/hooks/context-injector/config/__agent-main.md`
+);
 
 function capture(source, pattern, label) {
   const match = source.match(pattern);
@@ -247,6 +250,88 @@ const checks = [
       return existsSync(resolve(root, plugin, logo))
         ? []
         : [`plugin.json points at a missing logo, ${logo}`];
+    },
+  },
+  {
+    name: "no doc lists a config file for a subagent the spawn hook intercepts",
+    run() {
+      const spawnHook = read(
+        `${plugin}/hooks/context-injector/subagent-context-pre-tool-use.sh`
+      );
+      const intercepted = [
+        ...spawnHook.matchAll(/SUBAGENT_TYPE" == "([a-z-]+)"/g),
+      ].map((m) => m[1]);
+      const failures = [];
+      for (const doc of docs) {
+        for (const [, block] of read(doc).matchAll(/```[a-z]*\n([^`]+)\n```/g)) {
+          for (const line of block.split("\n").map((l) => l.trim())) {
+            for (const type of intercepted) {
+              if (line === `agent-${type}.md`)
+                failures.push(
+                  `${doc} lists agent-${type}.md, which the spawn hook never reads`
+                );
+            }
+          }
+        }
+      }
+      return failures;
+    },
+  },
+  {
+    name: "what the README quotes from the bundled prompt is in the bundled prompt",
+    run() {
+      const quoted = [
+        ...pluginReadme.matchAll(/```text\n([^`]+)\n```/g),
+      ].flatMap(([, block]) =>
+        block.split("\n").filter((line) => /^MESSAGING OVERRIDE/.test(line))
+      );
+      if (quoted.length === 0)
+        return ["the plugin README no longer quotes the delegation override"];
+      return quoted
+        .filter((line) => !mainAgentConfig.includes(line))
+        .map((line) => `__agent-main.md does not contain "${line}"`);
+    },
+  },
+  {
+    name: "both READMEs introduce the routing before the secondary features",
+    run() {
+      const main = capture(
+        contextLib,
+        /config_file "(__agent-[a-z]+\.md)"/,
+        "the main agent config filename"
+      );
+      const failures = [];
+      for (const [label, body] of [
+        ["the root README", rootReadme],
+        ["the plugin README", pluginReadme],
+      ]) {
+        const core = body.indexOf(main);
+        if (core === -1) continue;
+        for (const feature of ["advisor", "MEMORY.md", "transcript"]) {
+          const at = body.indexOf(feature);
+          if (at !== -1 && at < core)
+            failures.push(
+              `${label} introduces ${feature} before it names ${main}`
+            );
+        }
+      }
+      return failures;
+    },
+  },
+  {
+    name: "the declared license is a license the repo actually ships",
+    run() {
+      const declared = readJSON(`${plugin}/.cursor-plugin/plugin.json`).license;
+      if (!declared) return ["plugin.json declares no license"];
+      if (!existsSync(resolve(root, "LICENSE")))
+        return [`plugin.json declares ${declared} but there is no LICENSE file`];
+      const body = read("LICENSE");
+      const failures = [];
+      if (declared === "MIT" && !body.startsWith("MIT License"))
+        failures.push(`plugin.json declares MIT but LICENSE is something else`);
+      if (readJSON("package.json").license !== declared)
+        failures.push(`package.json and plugin.json disagree on the license`);
+      return failures;
     },
   },
   {

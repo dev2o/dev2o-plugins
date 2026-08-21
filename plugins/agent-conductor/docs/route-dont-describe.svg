@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 500" width="1320" height="500" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="rd-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="rd-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1320" height="500" fill="#ffffff"/>
+
+  <text x="32" y="32" font-size="18" font-weight="600" fill="#0f172a">A brief is a paraphrase, and a paraphrase carries the orchestrator&#8217;s guess at the answer.</text>
+
+  <g>
+    <rect x="32" y="56" width="612" height="400" rx="14" fill="#fbfbfd" stroke="#e2e8f0" stroke-width="1.5"/>
+    <rect x="58" y="78" width="104" height="24" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="110" y="94" font-size="11" font-weight="700" fill="#64748b" letter-spacing="0.8" text-anchor="middle">DESCRIBED</text>
+    <text x="58" y="134" font-size="17" font-weight="600" fill="#0f172a">The orchestrator writes a brief</text>
+
+    <rect x="58" y="150" width="560" height="44" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="76" y="178" font-size="12" font-weight="700" fill="#64748b">YOU</text>
+    <text x="128" y="178" font-size="13.5" fill="#334155">why did checkout get slow?</text>
+    <path d="M 338 194 L 338 206" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#rd-grey)"/>
+
+    <rect x="58" y="208" width="560" height="44" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="76" y="236" font-size="12" font-weight="700" fill="#64748b">MAIN</text>
+    <text x="128" y="236" font-size="13.5" fill="#334155">writes a detailed task description</text>
+    <path d="M 338 252 L 338 264" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#rd-grey)"/>
+
+    <rect x="58" y="266" width="560" height="44" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="338" y="294" font-size="13" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" fill="#475569" text-anchor="middle">&#8220;Refactor the parser. The bug is in there.&#8221;</text>
+    <path d="M 338 310 L 338 322" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#rd-grey)"/>
+
+    <rect x="58" y="324" width="560" height="44" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="76" y="352" font-size="12" font-weight="700" fill="#64748b">EXPLORE</text>
+    <text x="152" y="352" font-size="13.5" fill="#334155">reading parser.ts, ignoring its own instructions</text>
+
+    <rect x="58" y="386" width="560" height="44" rx="10" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+    <text x="338" y="414" font-size="19" font-weight="700" fill="#b91c1c" text-anchor="middle">It answers the orchestrator&#8217;s hunch.</text>
+  </g>
+
+  <g>
+    <rect x="676" y="56" width="612" height="400" rx="14" fill="#fbfbfd" stroke="#c7d2fe" stroke-width="1.5"/>
+    <rect x="702" y="78" width="104" height="24" rx="12" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1"/>
+    <text x="754" y="94" font-size="11" font-weight="700" fill="#4f46e5" letter-spacing="0.8" text-anchor="middle">ROUTED</text>
+    <text x="702" y="134" font-size="17" font-weight="600" fill="#0f172a">The orchestrator only routes</text>
+
+    <rect x="702" y="150" width="560" height="44" rx="8" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+    <text x="720" y="178" font-size="12" font-weight="700" fill="#4f46e5">YOU</text>
+    <text x="772" y="178" font-size="13.5" fill="#334155">why did checkout get slow?</text>
+    <path d="M 982 194 L 982 206" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#rd-blue)"/>
+
+    <rect x="702" y="208" width="560" height="44" rx="8" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+    <text x="720" y="236" font-size="12" font-weight="700" fill="#4f46e5">MAIN</text>
+    <text x="772" y="236" font-size="13.5" fill="#334155">picks the specialist, attaches file paths, adds nothing</text>
+    <path d="M 982 252 L 982 264" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#rd-blue)"/>
+
+    <rect x="702" y="266" width="270" height="44" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="837" y="294" font-size="12.5" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" fill="#1d4ed8" text-anchor="middle">your words, verbatim</text>
+
+    <rect x="992" y="266" width="270" height="44" rx="8" fill="#ccfbf1" stroke="#0d9488" stroke-width="1.5"/>
+    <text x="1127" y="294" font-size="12.5" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" fill="#0f766e" text-anchor="middle">agent-explore.md</text>
+
+    <path d="M 982 310 L 982 322" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#rd-blue)"/>
+
+    <rect x="702" y="324" width="560" height="44" rx="8" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+    <text x="720" y="352" font-size="12" font-weight="700" fill="#4f46e5">EXPLORE</text>
+    <text x="796" y="352" font-size="13.5" fill="#334155">profiling checkout, the way its own file tells it to</text>
+
+    <rect x="702" y="386" width="560" height="44" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+    <text x="982" y="414" font-size="19" font-weight="700" fill="#15803d" text-anchor="middle">It answers your question.</text>
+  </g>
+</svg>

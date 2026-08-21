@@ -2,6 +2,7 @@
   "name": "dev2o-plugins",
   "version": "0.1.25",
   "private": true,
+  "license": "MIT",
   "description": "Cursor plugin marketplace for dev2o plugins",
   "repository": {
     "type": "git",

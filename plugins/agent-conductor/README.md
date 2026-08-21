@@ -1,14 +1,14 @@
 # Agent Conductor
 
-**Standing instructions for one Cursor agent, not for all of them.**
+**Every instruction you write reaches every agent you run. These files reach just the one you meant.**
 
-Cursor has two places for instructions that apply on every turn. A rule with `alwaysApply`, or an `AGENTS.md`. Both go to every agent in the workspace. The agent you are talking to reads them. So does every subagent it spawns.
+Cursor has two places for instructions that apply on every turn, a rule with `alwaysApply` and an `AGENTS.md`. Both are broadcasts. The agent you are talking to reads them. So does every subagent it spawns.
 
-That breaks as soon as you use subagents. Write "delegate implementation to a subagent, never write code in this thread" and your workers read it too, so they delegate instead of working. Write "you are the orchestrator" and five agents believe it at once.
+That breaks the moment you use subagents. Write "delegate implementation to a subagent, never write code in this thread" and your workers read it too, so they delegate instead of working. Write "you are the orchestrator" and five agents believe it at once.
 
-Agent Conductor gives each role its own file.
+Agent Conductor addresses each instruction to one role.
 
-![How Agent Conductor routes context, compared with a broadcast rule](docs/addressed-context.png)
+![A broadcast rule reaches every agent, so the workers delegate too. Agent Conductor addresses one file per role, so the workers work.](docs/addressed-context.png)
 
 | File | Who reads it | When it arrives |
 | --- | --- | --- |
@@ -16,7 +16,7 @@ Agent Conductor gives each role its own file.
 | `agent-explore.md` | subagents of type `explore` | when the agent spawns one |
 | `agent-{subagent_type}.md` | subagents of that exact type | when the agent spawns one |
 
-No file for a role means nothing is sent to that role. The `agent-` prefix is fixed and the suffix is the subagent type verbatim, so `explore` needs `agent-explore.md`.
+No file for a role means nothing is sent to that role. The `agent-` prefix is fixed and the suffix is the subagent type verbatim, so `explore` needs `agent-explore.md`. Only `__agent-main.md` ships with the plugin. The rest are files you add, which is why its name is the odd one out, reserved rather than matched against a type.
 
 ## The main agent's copy never lands in the thread
 
@@ -25,6 +25,24 @@ No file for a role means nothing is sent to that role. The `agent-` prefix is fi
 ![The same instructions on every turn without filling the thread](docs/thread-cost.png)
 
 Edit the file and the next prompt uses the new text. That is the part people notice first. You can rework the orchestrator's instructions in the middle of a conversation without restarting the chat or scrolling past six copies of your own boilerplate.
+
+## The specialist is the boss. The orchestrator only routes.
+
+Giving the main agent a prompt of its own is what lets you give it orchestrator discipline. The bundled `__agent-main.md` opens its delegation rules with this.
+
+```text
+MESSAGING OVERRIDE: Overrides the Task tool's native guidance to "provide a highly detailed task description."
+```
+
+Cursor's `Task` tool asks the spawning agent to write a detailed brief. That is fair advice for one agent handing off a chore. It is the wrong default the moment your subagents have standing instructions of their own, because a brief is a paraphrase and a paraphrase carries the orchestrator's reading of the problem. Hand your `explore` agent "the user wants a refactor, I think the bug is in the parser" and you have pre-empted the search you asked for. The specialist follows the fresher, more specific-sounding lead and quietly drops its own guidance.
+
+![Describing the task hands the specialist the orchestrator's hunch. Routing it hands over your words and lets the specialist keep its own instructions.](docs/route-dont-describe.png)
+
+So the default tells the main agent to pass your words through verbatim with file paths attached, and to let subagents pull their own data. The orchestrator decides who runs. It does not decide what they will find.
+
+The advisor is the strict case. Its spawn line is `Advise. <conversation_id>` and nothing else, because a hand-written summary is where the main agent launders its own assumptions into the review it went and asked for.
+
+None of this is writable as a broadcast. Put "pass the prompt through verbatim, add no framing of your own" in `AGENTS.md` and every subagent reads it too, where at best it means nothing and at worst it tells your workers not to restate the task they were handed.
 
 ## Install
 
@@ -70,11 +88,16 @@ The plugin ships a default `__agent-main.md`. Override it in your project, per f
    ```
 
    ```text
-   2026-08-21T17:40:04Z cid=bc-09cb2003-...  decision=inject reason=main agent
-   2026-08-21T17:49:05Z cid=bc-88f10553-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:08:28Z cid=bc-ae333be9-...  decision=inject reason=main agent
+   2026-08-21T20:11:35Z cid=bc-9c6794f7-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:14:57Z cid=bc-b75cb214-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:14:57Z cid=bc-0df7a8ca-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:14:58Z cid=bc-f14c2cd5-...  decision=skip   reason=prompt matches a recorded spawn
    ```
 
-Steps 3 and 4 are the whole product. The second log line is the subagent being kept out.
+   Those lines are from one real Cloud Agent session in this repository. One main agent injected, four subagents kept out.
+
+Steps 3 and 4 are the whole product. Every `skip` line is a subagent that did not get told it was the orchestrator.
 
 Keeping it out is harder than it sounds. On a Cloud Agent it is genuinely hard. A spawned child arrives with a fresh `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`, which is exactly what a main agent looks like. Three signals settle it, in order. The payload names the child when it can. `subagentStart` carries the child's own id. Failing both, the spawn hook already knows the exact prompt each child will receive, so the routing hook skips a prompt it recognizes and remembers that conversation id for later turns.
 
@@ -84,7 +107,13 @@ Unknown sessions get injected. A broken registry costs you subagent isolation, n
 
 The subagent path rewrites the Task prompt through `updated_input` on `preToolUse`. The main-agent path returns `additional_context` on `beforeSubmitPrompt`, and the agent receives it as a system reminder on that turn.
 
-Cursor's hooks reference does not list `additional_context` as an output field for `beforeSubmitPrompt`, though it arrives. That reference is behind the implementation in the other direction too, listing two input fields for the hook where the real payload carries twelve. Step 3 of the quickstart is how you confirm the delivery on your own build, and it is worth running once after an upgrade, because the plugin depends on behavior Cursor has not written down.
+Cursor's hooks reference does not list `additional_context` as an output field for `beforeSubmitPrompt`, though it arrives. The input side is undocumented too, and it is not the same on every surface. A Cloud Agent delivered five fields on the build this was last checked against, `conversation_id`, `generation_id`, `hook_event_name`, `composer_mode` and `prompt`. Read your own rather than trusting that list.
+
+```bash
+jq 'keys' /tmp/cursor-hook-debug/latest-beforeSubmitPrompt-payload.json
+```
+
+Step 3 of the quickstart is how you confirm the delivery on your own build, and it is worth running once after an upgrade, because the plugin depends on behavior Cursor has not written down.
 
 ## Configuration
 
@@ -93,11 +122,12 @@ Project overrides live under your project root:
 ```text
 .cursor/dev2o-agent-conductor/config/
   __agent-main.md
-  agent-advisor.md
   agent-explore.md
 ```
 
-Resolution is per file, against `CURSOR_PROJECT_DIR`. A project file wins over the plugin's bundled copy, and the files you do not override keep the bundled default. Bundled defaults live in [`hooks/context-injector/config/`](hooks/context-injector/config/).
+Resolution is per file, against `CURSOR_PROJECT_DIR`. A project file wins over the plugin's bundled copy. Only `__agent-main.md` has a bundled copy to win over, in [`hooks/context-injector/config/`](hooks/context-injector/config/); every `agent-{subagent_type}.md` is a file you create, and a type you never write a file for is sent nothing.
+
+There is no `agent-advisor.md`. The advisor is the one type the spawn hook handles before it looks for a context file, so a file of that name would never be read.
 
 Subagent files may use two tokens, substituted at spawn time only when present:
 
@@ -174,15 +204,20 @@ Default show hides thinking; see the footer for optional flags.
 
 | Scrubbed | Detail |
 | --- | --- |
-| Known token formats | `sk-`, `ghp_`, `gho_`, `gha_`, `github_pat_`, `xoxb-` and friends, `ops_`, JWTs |
-| Assignments that name a secret | any `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*API*` variable, value replaced with `[REDACTED]` |
-| File contents | dropped from `beforeReadFile`, and `old_string` and `new_string` dropped from every edit |
+| Known token formats | `crsr_` (Cursor), `sk-` (OpenAI and Anthropic), `sk_live_` and `rk_live_` (Stripe), `ghp_`, `gho_`, `gha_`, `ghr_`, `ghs_`, `ghu_`, `github_pat_`, `npm_`, `xoxb-` and friends, `ops_`, `AKIA` and `ASIA` (AWS key ids), `AIza` (Google), JWTs |
+| Assignments that name a secret | any `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*API*` variable, plus lowercase `password=`, value replaced with `[REDACTED]` |
+| Syntax that carries a credential | `Authorization: Bearer`, `Basic` and `token` headers, `--token`, `--api-key`, `--secret` and `--password` style flags, `-u user:password`, and `user:password@host` inside any URL |
+| Private keys | the body of any `-----BEGIN ... PRIVATE KEY-----` block |
+| Fields scanned for secrets | strings nested under `command`, `prompt`, `tool_input`, `tool_output`, `output`, `text`, and `error_message` |
+| File contents | `content` dropped from `beforeReadFile`; `old_string` and `new_string` dropped from `afterFileEdit` edits and top-level `preToolUse` tool input |
 | Read and fetch tool output | replaced with a placeholder |
 | Shell output | last 1200 characters kept, the rest dropped |
 | Local identifiers | `session_id`, `workspace_roots` and `transcript_path` deleted, `user_email` cut to the part before the `@` |
 | Long strings | capped at 16384 characters |
 
-Redaction runs over agent text, tool output, shell output, and error messages. It does not run over the text of the shell commands themselves, so a secret written literally into a command survives capture. Read a file before you commit it.
+Redaction runs recursively over the fields listed above, so matching secrets in shell commands, user prompts, and nested tool arguments are replaced without removing the surrounding text. The rules are deliberately narrow, because a filter that shreds ordinary code and prose destroys the transcript's value as the advisor's only input.
+
+That narrowness has a cost, and these are the shapes known to survive. A token whose prefix is not in the table above and that is not introduced by one of the syntax forms, so a bare vendor key pasted into a prompt on its own. A URL that is itself the credential, such as a Slack incoming webhook or a Sentry DSN. A password glued to a single-letter flag, as in `mysql -pSecret`, because `-p` means port or parents nearly everywhere else. An all-numeric password after `-u user:`, which is skipped so that `docker run -u 1000:1000` survives. Public key material is left alone on purpose, since `ssh-rsa` lines are meant to be shared. Other tool argument keys can still carry file bodies, fields outside the list above are not scanned, and the raw payload dumps under `/tmp/cursor-hook-debug` are unsanitized. Read each transcript before you commit it.
 
 Two things narrow the blast radius. A shipped `.cursorignore` stops agents from reading the `.jsonl` files directly. `beforeShellExecution` denies commands whose job is dumping the environment, meaning `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`. Read that second one as a guardrail rather than a boundary, since it matches command shapes and an agent that wants the file badly enough can spell the read another way.
 

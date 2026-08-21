@@ -10,13 +10,24 @@ def redact_secrets:
   if type == "string" then
     gsub("\\b(?:OP_|TAVILY)[A-Z0-9_]+\\s*[=:]\\s*\\K(?!\\[REDACTED\\])\\S+"; "[REDACTED]")
     | gsub("\\b[A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|API)[A-Za-z0-9_]*\\s*[=:]\\s*\\K(?!\\[REDACTED\\])\\S+"; "[REDACTED]")
+    | gsub("(?i)\\bpass(?:word|wd)=[\"']?\\K(?!\\[REDACTED\\])[^\\s\"'&]+"; "[REDACTED]")
+    | gsub("(?i)\\bauthorization\\s*:\\s*(?:bearer|basic|token)\\s+[\"']?\\K(?!\\[REDACTED\\])(?=[^\\s\"']*[0-9_=.-]|[^\\s\"']{16})[^\\s\"']+"; "[REDACTED]")
+    | gsub("(?i)--(?:(?:api|auth|access)[-_]?key|(?:(?:api|auth|access|client|refresh)[-_])?(?:token|secret|password|passwd))[=\\s][\"']?\\K(?!\\[REDACTED\\])(?=[^\\s\"']*[0-9_=.-]|[^\\s\"']{16})[^\\s\"']+"; "[REDACTED]")
+    | gsub("(?:^|\\s)--?u(?:ser)?[=\\s][\"']?[A-Za-z0-9_.@-]+:\\K(?![/@]|[0-9]+(?:[^A-Za-z0-9_]|$))[^\\s\"']+"; "[REDACTED]")
+    | gsub("://[^\\s:/@\"']*:\\K[^\\s:/@\"']+(?=@)"; "[REDACTED]")
     # Redact known standalone token formats globally
     | gsub("sk-[A-Za-z0-9_-]{16,}"; "[REDACTED]")
-    | gsub("gh[poa]_[A-Za-z0-9]{30,}"; "[REDACTED]")
+    | gsub("gh[aporsu]_[A-Za-z0-9]{30,}"; "[REDACTED]")
     | gsub("github_pat_[A-Za-z0-9_]+"; "[REDACTED]")
     | gsub("xox[baprs]-[A-Za-z0-9-]+"; "[REDACTED]")
     | gsub("ops_[A-Za-z0-9]{16,}"; "[REDACTED]")
+    | gsub("crsr_[A-Za-z0-9]{32,}"; "[REDACTED]")
+    | gsub("\\b(?:AKIA|ASIA)[A-Z0-9]{16}\\b"; "[REDACTED]")
+    | gsub("\\bAIza[A-Za-z0-9_-]{35}"; "[REDACTED]")
+    | gsub("\\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}"; "[REDACTED]")
+    | gsub("\\bnpm_[A-Za-z0-9]{20,}"; "[REDACTED]")
     | gsub("eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+"; "[REDACTED]")
+    | gsub("-----BEGIN [A-Z ]*PRIVATE KEY-----\\K[^-]+"; "[REDACTED]")
   else . end;
 
 # 3. Safe recursive application wrapper
@@ -45,6 +56,9 @@ if type == "object" then
   | if .hook_event_name == "afterFileEdit" and (.edits | type) == "array" then
       .edits |= map(if type == "object" then del(.old_string, .new_string) else . end)
     else . end
+  | if .hook_event_name == "preToolUse" and (.tool_input | type) == "object" then
+      .tool_input |= del(.old_string, .new_string)
+    else . end
   # Drop bulky tool output on read-like postToolUse (with string type-guard on tool_name)
   | if ((.tool_name | strings) // "" | test("read|fetch"; "i")) and .hook_event_name == "postToolUse" then
       if .tool_output != null then 
@@ -63,6 +77,9 @@ if type == "object" then
       )
     else . end
   # Apply redaction recursively across all potential text or structured payloads
+  | if .command != null then .command |= maybe_redact else . end
+  | if .prompt != null then .prompt |= maybe_redact else . end
+  | if .tool_input != null then .tool_input |= maybe_redact else . end
   | if .tool_output != null then .tool_output |= maybe_redact else . end
   | if .output != null then .output |= maybe_redact else . end
   | if .text != null then .text |= maybe_redact else . end

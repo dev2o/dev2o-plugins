@@ -1,6 +1,6 @@
-# Cursor Agent Conductor — Hooks & Orchestration Suite
+# Agent Conductor hooks
 
-This directory contains the core lifecycle hooks, context injectors, security blockers, and transcript utilities that power multi-agent orchestration in Cursor. 
+These scripts do three things. They address a standing prompt to one agent rather than broadcasting it, they capture and scrub a transcript so the advisor has something to read, and they block a couple of shell commands whose only job is dumping secrets. They do not orchestrate anything, schedule anything, or run any agents. If you are here to write documentation, start from that sentence, because describing this directory as an orchestration suite is how the plugin's marketing went wrong twice.
 
 These scripts execute in the critical path of the IDE's subagent loop. Because a single unhandled error or malformed payload can permanently freeze the UI, lock up a subagent, or corrupt workspace memory, this entire suite is built around **strict high-reliability and fail-open engineering principles**.
 
@@ -38,9 +38,9 @@ Chat transcripts and tool payloads can swell to hundreds of megabytes during lon
 * **`shell-secrets-deny.sh` (`beforeShellExecution`):** Intercepts subagent shell execution before it runs. Explicitly blocks commands that attempt to dump environment variables (`env`, `printenv`, `export -p`) or read raw secret files (`cat .env`, `grep ... .env`), forcing subagents to test credentials safely via dedicated tool commands (e.g., `command -v op`).
 
 ### Audit Logging & Redaction
-* **`scrub.jq`:** The scrubbing filter applied to every transcript line. It makes one pass per pattern over the strings under `tool_output`, `output`, `text` and `error_message`, and it does not touch `command`, `prompt` or `tool_input`.
-  * Uses Oniguruma `\K` (keep match start) regex patterns to strip API keys (`sk-...`, `github_pat_...`, AWS/Slack tokens, JWTs) while preserving variable names.
-  * Uses recursive traversal (`walk/1`) to guarantee that structured JSON tool outputs (objects and arrays) are completely scrubbed without type-trap crashes.
+* **`scrub.jq`:** The scrubbing filter applied to every transcript line. It makes one pass per pattern over strings under `command`, `prompt`, `tool_input`, `tool_output`, `output`, `text`, and `error_message`.
+  * Uses Oniguruma `\K` (keep match start) regex patterns to strip known token shapes (`crsr_...`, `sk-...`, `github_pat_...`, AWS/Slack/Stripe/Google tokens, JWTs, private key bodies) and the syntax that carries a credential (`Authorization` headers, `--token` style flags, `-u user:password`, URL userinfo) while preserving the surrounding text.
+  * Uses recursive traversal (`walk/1`) to scrub strings nested in structured tool input and output without type-trap crashes.
   * Automatically truncates massive string payloads (capped at 16KB) and drops bulky tool read bodies to prevent audit log bloat.
 
 ### Transcript Browsing CLI (`_transcripts.py`)

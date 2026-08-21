@@ -2,8 +2,9 @@
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
   "version": "0.1.25",
-  "description": "Standing instructions addressed to one agent instead of broadcast to all of them. The main agent gets its own prompt, each subagent type gets its own. Also ships a gated advisor subagent, orchestrator memory, and scrubbed transcripts with a browse CLI.",
+  "description": "Every instruction you write in Cursor reaches every agent you run. An AGENTS.md or an always-on rule reaches every subagent too, so a rule telling the orchestrator to delegate also tells each worker to delegate. This addresses one instruction file per agent role, re-read before every prompt and never left behind in the thread. The shipped default also stops the orchestrator paraphrasing your task into its specialists, so each subagent keeps its own guidance instead of following the framing that arrived with the job. Works in the Cursor IDE and on Cloud Agents. Also ships a gated advisor subagent, orchestrator memory, and scrubbed transcripts with a browse CLI.",
   "skills": "./skills/",
+  "license": "MIT",
   "author": {
     "name": "dev2o"
   },
