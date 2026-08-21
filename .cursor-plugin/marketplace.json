@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Cursor plugins for multi-agent orchestration and agent workflows",
-    "version": "0.1.23"
+    "version": "0.1.24"
   },
   "plugins": [
     {
       "name": "agent-conductor",
       "source": "plugins/agent-conductor",
-      "description": "Advisor subagent, scrubbed transcript capture with a browse CLI, persistent agent memory, and per-subagent context-injection hooks"
+      "description": "Gives your main agent persistent memory, an on-call advisor for hard decisions, and a searchable transcript of every session."
     }
   ]
 }
