@@ -27,6 +27,9 @@ default_payload() {
   esac
 }
 
+# Recorded in the dispatch log only. A cloud VM writes this manifest when it
+# installs plugins, but a cloud VM with no plugins installed does not write it
+# at all, so its absence does not mean desktop and must not gate anything.
 CLOUD_MANIFEST="$HOME/.cursor/plugins/cache/.cloud-plugin-manifest.json"
 
 fail_open() {
@@ -50,14 +53,6 @@ TARGET="${1:-}"
     "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${event:-?}" "${TARGET:-none}" "$where" \
     >> "$DUMP_DIR/cloud-launcher.log"
 } 2>/dev/null
-
-# Only a cloud VM writes this manifest, and only a cloud VM refuses to load the
-# plugin's own hooks. On desktop the plugin hooks are already running, so
-# dispatching here would double-fire every one of them.
-if [[ ! -f "$CLOUD_MANIFEST" ]]; then
-  default_payload
-  exit 0
-fi
 
 [[ -n "$TARGET" ]] || fail_open "No plugin script argument"
 [[ -n "$INPUT" ]] || fail_open "Received empty stdin"

@@ -105,7 +105,9 @@ Measured on run `bc-46559db3` across 131 captured events, with the project shim 
 
 Two consequences. `preToolUse` on `Task` never runs, so nothing hook-side stamps the advisor spawn line, which is why the Executor stamps it and why that instruction lives in the `advisor` agent description rather than only in `__agent-main.md`. And `beforeSubmitPrompt` never runs, so the orchestrator context in `__agent-main.md` is not injected on a cloud VM at all; a project that wants those rules there has to put them somewhere the agent reads on its own, such as a committed `AGENTS.md`.
 
-`cloud/hooks.json` still registers the events that never fire. They cost nothing when absent, and registering them is how the next run finds out that Cursor started delivering them.
+`cloud/hooks.json` still registers the capture events that never fire. They cost nothing when absent, and registering them is how the next run finds out that Cursor started delivering them. It does not register the orchestrator inject: that event never fires in the cloud, and unlike a capture an inject cannot recognize its own duplicate, so registering it would only risk injecting the block twice on desktop.
+
+The launcher runs on desktop too, alongside the plugin's own hooks, which means both deliver the same event. `audit.sh` drops a line identical to the one before it, timestamp aside, so a doubled capture writes once. That is deliberate: a cloud VM with no plugins installed writes no plugin manifest, so there is no reliable way to tell cloud from desktop, and an environment guess that fails silently is worse than an idempotent write.
 
 ### Verifying a cloud run
 

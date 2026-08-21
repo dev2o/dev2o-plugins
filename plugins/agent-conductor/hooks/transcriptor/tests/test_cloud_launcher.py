@@ -173,18 +173,49 @@ def test_launcher_honors_a_working_tree_override(tmp_path: Path) -> None:
     assert "captured from the working tree" in log.read_text(encoding="utf-8")
 
 
-def test_launcher_does_nothing_on_desktop(tmp_path: Path) -> None:
-    # Desktop loads the plugin's own hooks, so dispatching here would double-fire.
+def test_launcher_dispatches_without_a_cloud_manifest(tmp_path: Path) -> None:
+    # A cloud VM with no plugins installed writes no manifest, so its absence
+    # cannot be used to decide whether to dispatch.
     home = tmp_path / "home"
     _install_plugin(home, cloud=False)
     result = _run(
         AUDIT,
-        {"conversation_id": REAL_ID, "hook_event_name": "beforeSubmitPrompt", "prompt": "desktop"},
+        {"conversation_id": REAL_ID, "hook_event_name": "beforeSubmitPrompt", "prompt": "no manifest"},
         tmp_path,
         home,
     )
-    assert json.loads(result.stdout) == {"continue": True}
-    assert not (tmp_path / ".cursor" / "chat-transcripts").exists()
+    assert result.returncode == 0
+    log = tmp_path / ".cursor" / "chat-transcripts" / f"{REAL_ID}.jsonl"
+    assert "no manifest" in log.read_text(encoding="utf-8")
+
+
+def test_two_hook_sources_capture_one_line(tmp_path: Path) -> None:
+    # The plugin's own hooks and a project launcher both deliver the same event
+    # on desktop. The capture has to be idempotent rather than gated.
+    home = tmp_path / "home"
+    _install_plugin(home)
+    payload = {
+        "conversation_id": REAL_ID,
+        "hook_event_name": "afterAgentResponse",
+        "text": "said once",
+    }
+    _run(AUDIT, payload, tmp_path, home)
+    _run(AUDIT, payload, tmp_path, home)
+    log = tmp_path / ".cursor" / "chat-transcripts" / f"{REAL_ID}.jsonl"
+    lines = [line for line in log.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) == 1
+
+
+def test_cloud_hooks_json_omits_the_orchestrator_inject() -> None:
+    # beforeSubmitPrompt never fires in the cloud, and unlike a capture the
+    # inject cannot dedupe itself, so registering it only risks a double inject.
+    config = json.loads(CLOUD_HOOKS.read_text(encoding="utf-8"))
+    targets = {
+        entry["command"]
+        for entries in config["hooks"].values()
+        for entry in entries
+    }
+    assert not any("main-agent-orchestrator-inject" in t for t in targets)
 
 
 def _cloud_without_plugin(home: Path) -> None:
