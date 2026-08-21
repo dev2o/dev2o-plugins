@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 430" width="1320" height="430" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="tc-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1320" height="430" fill="#ffffff"/>
+
+  <text x="32" y="30" font-size="15" font-weight="600" fill="#0f172a">The same instructions, on every turn, without filling up the thread</text>
+
+  <g>
+    <rect x="32" y="48" width="592" height="342" rx="14" fill="#fbfbfd" stroke="#e2e8f0" stroke-width="1.5"/>
+    <rect x="58" y="70" width="82" height="24" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="99" y="86" font-size="11" font-weight="700" fill="#64748b" letter-spacing="0.8" text-anchor="middle">STORED</text>
+    <text x="58" y="122" font-size="17" font-weight="600" fill="#0f172a">Instructions typed into the prompt</text>
+
+    <rect x="58" y="140" width="540" height="176" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="70" y="160" font-size="10.5" font-weight="700" fill="#94a3b8" letter-spacing="0.8">CONVERSATION</text>
+
+    <text x="76" y="188" font-size="11" fill="#94a3b8">1</text>
+    <rect x="92" y="172" width="356" height="24" rx="5" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="102" y="188" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#64748b">standing instructions</text>
+    <rect x="454" y="172" width="130" height="24" rx="5" fill="#334155"/>
+    <text x="464" y="188" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#f8fafc">your ask</text>
+
+    <text x="76" y="226" font-size="11" fill="#94a3b8">2</text>
+    <rect x="92" y="210" width="356" height="24" rx="5" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="102" y="226" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#64748b">standing instructions</text>
+    <rect x="454" y="210" width="130" height="24" rx="5" fill="#334155"/>
+    <text x="464" y="226" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#f8fafc">your ask</text>
+
+    <text x="76" y="264" font-size="11" fill="#94a3b8">3</text>
+    <rect x="92" y="248" width="356" height="24" rx="5" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="102" y="264" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#64748b">standing instructions</text>
+    <rect x="454" y="248" width="130" height="24" rx="5" fill="#334155"/>
+    <text x="464" y="264" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#f8fafc">your ask</text>
+
+    <text x="92" y="298" font-size="11.5" fill="#94a3b8">three copies stored, and a fourth on the next turn</text>
+
+    <text x="58" y="344" font-size="13.5" fill="#334155">Reword the instructions and the old copies stay in the thread,</text>
+    <text x="58" y="366" font-size="13.5" fill="#334155">arguing with the new ones.</text>
+  </g>
+
+  <g>
+    <rect x="664" y="48" width="624" height="342" rx="14" fill="#fbfbfd" stroke="#c7d2fe" stroke-width="1.5"/>
+    <rect x="690" y="70" width="112" height="24" rx="12" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1"/>
+    <text x="746" y="86" font-size="11" font-weight="700" fill="#4f46e5" letter-spacing="0.8" text-anchor="middle">NOT STORED</text>
+    <text x="690" y="122" font-size="17" font-weight="600" fill="#0f172a">Instructions delivered by the hook</text>
+
+    <rect x="880" y="140" width="382" height="176" rx="10" fill="#ffffff" stroke="#a5b4fc" stroke-width="1.5"/>
+    <text x="892" y="160" font-size="10.5" font-weight="700" fill="#818cf8" letter-spacing="0.8">CONVERSATION</text>
+
+    <rect x="690" y="172" width="150" height="24" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="700" y="188" font-size="9" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#1d4ed8">__agent-main.md</text>
+    <path d="M 844 184 L 890 184" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#tc-blue)"/>
+    <text x="912" y="188" font-size="11" fill="#94a3b8">1</text>
+    <rect x="928" y="172" width="316" height="24" rx="5" fill="#334155"/>
+    <text x="938" y="188" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#f8fafc">your ask</text>
+
+    <rect x="690" y="210" width="150" height="24" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="700" y="226" font-size="9" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#1d4ed8">__agent-main.md</text>
+    <path d="M 844 222 L 890 222" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#tc-blue)"/>
+    <text x="912" y="226" font-size="11" fill="#94a3b8">2</text>
+    <rect x="928" y="210" width="316" height="24" rx="5" fill="#334155"/>
+    <text x="938" y="226" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#f8fafc">your ask</text>
+
+    <rect x="690" y="248" width="150" height="24" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="700" y="264" font-size="9" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#1d4ed8">__agent-main.md</text>
+    <path d="M 844 260 L 890 260" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#tc-blue)"/>
+    <text x="912" y="264" font-size="11" fill="#94a3b8">3</text>
+    <rect x="928" y="248" width="316" height="24" rx="5" fill="#334155"/>
+    <text x="938" y="264" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#f8fafc">your ask</text>
+
+    <text x="690" y="298" font-size="11.5" fill="#818cf8">read fresh from disk, handed over, then gone</text>
+
+    <text x="690" y="344" font-size="13.5" fill="#334155">Edit the file and the next turn uses the new text. Nothing stale is</text>
+    <text x="690" y="366" font-size="13.5" fill="#334155">pinned behind it, and the conversation stays yours to read.</text>
+  </g>
+</svg>
