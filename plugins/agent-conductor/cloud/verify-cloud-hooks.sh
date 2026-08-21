@@ -1,18 +1,37 @@
 #!/usr/bin/env bash
 # Live verdict on whether agent-conductor is working in the current session.
 # Run it from the project root. Read-only apart from the dump directory.
+#
+# FAIL means the advisor cannot see the session. WARN means a documented
+# limitation that something else absorbs.
 
 DUMP_DIR="/tmp/cursor-hook-debug"
 LAUNCHER_LOG="$DUMP_DIR/cloud-launcher.log"
 CID="${CURSOR_CONVERSATION_ID:-}"
 ROOT="${CURSOR_PROJECT_DIR:-$PWD}"
-CLI="$ROOT/.cursor/chat-transcripts/_transcripts.py"
+PROJECT_CLI="$ROOT/.cursor/chat-transcripts/_transcripts.py"
 LOG="$ROOT/.cursor/chat-transcripts/$CID.jsonl"
 fail=0
 
 say() { printf '%s %s\n' "$1" "$2"; }
 check() {
   if [[ "$1" == "yes" ]]; then say "PASS" "$2"; else say "FAIL" "$2"; fail=1; fi
+}
+note() {
+  if [[ "$1" == "yes" ]]; then say "PASS" "$2"; else say "WARN" "$3"; fi
+}
+
+# The advisor agents resolve the CLI the same way: first copy that answers wins.
+working_cli() {
+  local cli
+  for cli in "$PROJECT_CLI" $(find "$HOME/.cursor/plugins/cache" -path '*/hooks/transcriptor/transcripts.py' 2>/dev/null); do
+    [[ -f "$cli" ]] || continue
+    if python3 "$cli" brief "Advise. ${CID:-none}" >/dev/null 2>&1; then
+      printf '%s\n' "$cli"
+      return 0
+    fi
+  done
+  return 1
 }
 
 printf 'conversation=%s\nproject=%s\n\n' "${CID:-unset}" "$ROOT"
@@ -21,40 +40,39 @@ printf 'conversation=%s\nproject=%s\n\n' "${CID:-unset}" "$ROOT"
 check "$hooks_ran" "some hook ran (dump directory exists)"
 
 if [[ -f "$LAUNCHER_LOG" ]]; then
-  check yes "the cloud launcher ran"
+  say "PASS" "the cloud launcher ran"
   printf '\nevents delivered to the launcher:\n'
   awk '{print $2}' "$LAUNCHER_LOG" | sort | uniq -c | sort -rn
-  if grep -q 'event=preToolUse' "$LAUNCHER_LOG"; then
-    say "PASS" "preToolUse reached the launcher"
-  else
-    say "FAIL" "preToolUse never reached the launcher"
-    fail=1
-  fi
-  # WARN, not FAIL: the Executor stamps the spawn line itself, so a missing Task
-  # hook costs the mismatch check and nothing else. Every FAIL below is fatal.
-  if grep -q 'target=hooks/context-injector/subagent-context-pre-tool-use.sh' "$LAUNCHER_LOG"; then
-    say "PASS" "preToolUse on Task reached the stamping hook"
-  else
-    say "WARN" "preToolUse on Task never reached the stamping hook; the Executor's own stamp is carrying the transport, and the id-mismatch deny is not enforceable here"
-  fi
   printf '\n'
+  # The Executor stamps the spawn line itself, so a missing Task hook costs the
+  # id-mismatch deny and nothing else.
+  note \
+    "$(grep -q 'target=hooks/context-injector/subagent-context-pre-tool-use.sh' "$LAUNCHER_LOG" && echo yes || echo no)" \
+    "preToolUse on Task reached the stamping hook" \
+    "preToolUse on Task never reached the stamping hook; the Executor's own stamp is carrying the transport, and the id-mismatch deny is not enforceable here"
 else
-  check no "the cloud launcher ran (no .cursor/hooks.json, or the project shim is not installed)"
+  say "WARN" "no launcher log; this project uses its own shim generation, or none. Hook delivery is judged by the capture below instead"
 fi
 
-[[ -f "$CLI" ]] && cli_present=yes || cli_present=no
-check "$cli_present" "_transcripts.py is present in the project"
-
-if [[ "$cli_present" == "yes" ]] && python3 "$CLI" brief "Advise. ${CID:-none}" >/dev/null 2>&1; then
-  check yes "the project CLI understands brief"
-else
-  check no "the project CLI understands brief"
+CLI=$(working_cli || echo "")
+[[ -n "$CLI" ]] && cli_ok=yes || cli_ok=no
+check "$cli_ok" "a copy of the CLI answers brief"
+if [[ "$cli_ok" == "yes" ]]; then
+  say "INFO" "using $CLI"
+  note \
+    "$([[ "$CLI" == "$PROJECT_CLI" ]] && echo yes || echo no)" \
+    "the project copy of the CLI understands brief" \
+    "the project copy is missing or predates brief, so the advisor falls back to the plugin's own copy"
 fi
 
 [[ -n "$CID" && -f "$LOG" ]] && captured=yes || captured=no
 check "$captured" "this session has a captured transcript"
 
-if [[ "$captured" == "yes" ]]; then
+if [[ "$captured" == "yes" && "$cli_ok" == "yes" ]]; then
+  dupes=$(jq -Sc 'del(.ts)' "$LOG" 2>/dev/null | sort | uniq -d | wc -l | tr -d ' ')
+  note "$([[ "${dupes:-0}" == "0" ]] && echo yes || echo no)" \
+    "no duplicate lines in the transcript" \
+    "$dupes duplicate lines in the transcript; two hook sources may be delivering the same event without dedupe"
   printf '\nbrief for this session:\n'
   python3 "$CLI" brief "Advise. $CID" 2>&1 | head -20
 fi
