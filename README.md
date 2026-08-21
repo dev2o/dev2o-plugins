@@ -8,13 +8,15 @@ Agent Conductor addresses each instruction to one role. `__agent-main.md` reache
 
 ![A broadcast rule reaches every agent, so the workers delegate too. Agent Conductor addresses one file per role, so the workers work.](plugins/agent-conductor/docs/addressed-context.png)
 
-The main agent's copy is read from disk before every prompt you submit and handed over as hook context rather than as a message. That matters for a second reason. Instructions pasted into a chat stay in it, so rewording them leaves the old copies behind to argue with the new ones. This way the conversation holds one copy at turn twenty, not twenty, and editing the file mid-conversation changes the very next turn.
-
-It is also what lets you tell the orchestrator to stay out of its specialists' way. The bundled `__agent-main.md` overrides Cursor's own advice to write a detailed brief for each subagent, and has the main agent pass your words through verbatim instead. A brief is a paraphrase, and a paraphrase carries the orchestrator's guess at the answer. Your specialists keep their own standing instructions rather than following whatever framing arrived with the task. That is another instruction you cannot write as a broadcast, because the subagents would read it too.
+The main agent's copy is read from disk before every prompt you submit and handed over as hook context rather than as a message, so it never piles up in the thread. Edit the file mid-conversation and your next prompt uses the new text.
 
 The same routing runs in the Cursor IDE and on Cloud Agents.
 
 Read [the plugin README](plugins/agent-conductor/README.md) for the quickstart and the configuration reference, and [Cloud Agents](plugins/agent-conductor/docs/cloud-agents.md) for the one extra step a cloud run needs.
+
+### The specialist is the boss, the orchestrator only routes
+
+Addressing the main agent alone is also what lets you tell it to stay out of its specialists' way. The bundled `__agent-main.md` overrides Cursor's own advice to write a detailed brief for each subagent, and has the main agent pass your words through verbatim instead. A brief is a paraphrase, and a paraphrase carries the orchestrator's guess at the answer, which your specialist then follows instead of its own instructions. That is another thing you cannot write as a broadcast. [The plugin README explains it](plugins/agent-conductor/README.md#the-specialist-is-the-boss-the-orchestrator-only-routes).
 
 ### What else is in the box
 
