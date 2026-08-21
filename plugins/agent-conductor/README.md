@@ -77,9 +77,9 @@ Bundled boilerplate: [`boilerplate/agent-memory/`](boilerplate/agent-memory/), [
 
 ## Cloud agents
 
-A cloud agent loads the plugin's agents but **not** the plugin's hooks. Cursor loads cloud hooks only from the project's own `.cursor/hooks.json` (plus team and enterprise hooks on Enterprise plans), and `sessionStart` does not run in the cloud at all. With no extra setup, a cloud run gets the `advisor` and `exe-advisor` subagents and nothing else: no transcript capture, no boilerplate seeding, no orchestrator injection.
+A cloud agent loads the plugin's agents and skills but **not** the plugin's hooks. Cursor loads cloud hooks only from the project's own `.cursor/hooks.json` (plus team and enterprise hooks on Enterprise plans), and `sessionStart` does not run in the cloud at all. With no extra setup, a cloud run gets the `advisor` subagent and skill **advisor-check** but nothing else: no transcript capture, no boilerplate seeding, no main-agent injection.
 
-The advisor still answers rather than breaking. The Executor stamps `Advise. <id>` itself, and both advisor agents fall back to the plugin's own copy of the CLI, so a cloud gatekeeper with no captured log reports `<no_transcript …/>` and asks the Executor to restate its objective.
+The advisor still answers rather than breaking. The main agent stamps `Advise. <id>` itself, and the advisor falls back to the plugin's own copy of the CLI, so a cloud run with no captured log reports `<no_transcript …/>` and asks the main agent to restate its objective.
 
 To run the full suite on a cloud VM, commit the launcher into the project:
 
