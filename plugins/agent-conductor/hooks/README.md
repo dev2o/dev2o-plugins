@@ -1,6 +1,6 @@
-# Cursor Agent Conductor — Hooks & Orchestration Suite
+# Agent Conductor hooks
 
-This directory contains the core lifecycle hooks, context injectors, security blockers, and transcript utilities that power multi-agent orchestration in Cursor. 
+These scripts do three things. They address a standing prompt to one agent rather than broadcasting it, they capture and scrub a transcript so the advisor has something to read, and they block a couple of shell commands whose only job is dumping secrets. They do not orchestrate anything, schedule anything, or run any agents. If you are here to write documentation, start from that sentence, because describing this directory as an orchestration suite is how the plugin's marketing went wrong twice.
 
 These scripts execute in the critical path of the IDE's subagent loop. Because a single unhandled error or malformed payload can permanently freeze the UI, lock up a subagent, or corrupt workspace memory, this entire suite is built around **strict high-reliability and fail-open engineering principles**.
 
