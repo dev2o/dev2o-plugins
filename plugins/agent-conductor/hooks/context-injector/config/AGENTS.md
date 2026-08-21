@@ -6,52 +6,29 @@ When the main agent spawns a subagent (Task tool, slash command, etc.), the hook
 
 ## Advisor (special case)
 
-Neither `advisor` nor `exe-advisor` uses `agent-advisor.md`. Both always rewrite the Task prompt.
+Neither `advisor` nor `exe-advisor` uses `agent-advisor.md`. The hook does not paste a transcript.
 
 ### `advisor` (gatekeeper)
 
-Spawned by the Executor with prompt `Advise.` The hook resolves the executor conversation id (same token logic as other context files), runs `hooks/transcriptor/transcripts.py show <id> --last 10`, and sets the Task prompt to **only**:
+The Executor sets `prompt` to `Advise.` When the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`), the hook delivers `Advise. <executor_id>`.
+
+If the incoming prompt already carries that same id, the stamp is unchanged. If it carries a different id, the hook denies the spawn.
+
+The gatekeeper fetches the log itself:
 
 ```
-The Executor agent has invoked you for strategic guidance.
-
-<inputs>
-  <conversation_id>{transcript_id}</conversation_id>
-  <recent_transcript>
-{last_10_messages}
-  </recent_transcript>
-</inputs>
-
-Apply your <evaluation_rules> to the <inputs> above.
-If a LEGITIMATE NEED is met, invoke the `exe-advisor` subagent with prompt exactly `CID:<id>` and the appropriate model. Otherwise, output the appropriate rejection message to return directly to the Executor.
+python3 .cursor/chat-transcripts/_transcripts.py brief "<spawn line verbatim>"
 ```
 
-The original Task prompt (`Advise.`) is dropped.
+`Advise. <id>` selects the triage view (last 10 user, assistant, and tool events) and includes `<escalate>CID:<id></escalate>`.
 
 ### `exe-advisor` (Senior Advisor)
 
-Spawned only by the gatekeeper. The gatekeeper's Task prompt must be exactly `CID:<executor_conversation_id>`. The hook parses that string (not the nested hook `conversation_id`), runs `hooks/transcriptor/transcripts.py show <id>`, and sets the Task prompt to **only**:
+Spawned only by the gatekeeper. The prompt is the `<escalate>` token, `CID:<executor_id>`. The hook returns `{"permission":"allow"}` and does not change the prompt.
 
-```
-The Executor agent has paused its workflow. You must provide strategic oversight based on the transcript of its actions so far.
+The senior runs the same `brief` command with that spawn line. That selects the full budgeted view and does not include `<escalate>`.
 
-<environment_awareness>
-You are operating within the Cursor IDE. You have implicit access to the workspace context, file contents, and codebase embeddings attached to this session. The <execution_transcript> represents what the Executor *thinks* it is doing; you must verify its assumptions against the actual codebase reality.
-</environment_awareness>
-
-<execution_transcript>
-<cli stdout>
-</execution_transcript>
-
-<advisor_directives>
-1. Deduce the Objective: Read the earliest entries in the <execution_transcript> to identify the user's original goal.
-2. Analyze the State: Evaluate the Executor's recent steps and errors. Are they on the right track or stuck in a loop?
-3. Cross-Reference: Compare the transcript against your Cursor workspace context. Is the Executor making false assumptions about file structures or dependencies?
-4. Direct: Output your strategic guidance immediately. Tell the Executor exactly what to do next, which files to target, or why its current approach is failing.
-</advisor_directives>
-```
-
-The `CID:` line is dropped. If the id is missing, malformed (`..` or `/`), or `show` fails, the same wrapper is used with `(conversation id unavailable)` inside `<execution_transcript>`.
+If no log exists, `brief` prints `<no_transcript …/>` and exits 0. A malformed spawn line prints usage on stderr and exits 2.
 
 ## Adding context for a subagent
 
@@ -64,7 +41,7 @@ config/
   agent-{subagent_type}.md
 ```
 
-**No file → no injection** (hook returns `{ "permission": "allow" }`), except `advisor` and `exe-advisor`, which always rewrite the prompt.
+**No file → no injection** (hook returns `{ "permission": "allow" }`), except `advisor`, which stamps `Advise. <executor_id>` when the parent id is a safe basename. `exe-advisor` is left unchanged.
 
 ## Project overrides
 
@@ -109,6 +86,6 @@ make hooks-debug-on
 make hooks-debug-tail
 ```
 
-IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for advisor / exe-advisor, when the rewritten prompt is present).
+IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for `advisor`, when the stamped `Advise. <id>` line is present).
 
-If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that in `subagent-context-pre-tool-use.sh` — it prepends substituted context to the Task `prompt` before spawn (`advisor`: gatekeeper template; `exe-advisor`: full transcript dump).
+If context does not surface, the documented fallback is `preToolUse` on the Task tool with `updated_input` (see Cursor hooks docs). This project implements that in `subagent-context-pre-tool-use.sh`. It prepends substituted context to the Task `prompt` before spawn. For `advisor` it stamps the executor id. For `exe-advisor` it returns allow and leaves the prompt alone.
