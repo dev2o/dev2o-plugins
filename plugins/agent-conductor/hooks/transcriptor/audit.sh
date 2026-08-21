@@ -22,12 +22,6 @@ if [[ -z "${CURSOR_PROJECT_DIR:-}" ]]; then
   exit 0
 fi
 
-LOG_DIR="$CURSOR_PROJECT_DIR/.cursor/chat-transcripts"
-if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
-  echo "$(date -u): FAILED - Cannot create directory $LOG_DIR. Permission issue?" >> "$DUMP_DIR/error.log"
-  exit 0
-fi
-
 # 3. Explicit Dependency Check (Log to /tmp instead of black-hole >&2)
 if ! command -v jq >/dev/null 2>&1; then
   echo "$(date -u): FAILED - 'jq' is not installed in PATH: $PATH" >> "$DUMP_DIR/error.log"
@@ -44,6 +38,12 @@ fi
 # Basic path safety without bloated regex
 if [[ "$conversation_id" == *".."* ]] || [[ "$conversation_id" == *"/"* ]]; then
   echo "$(date -u): FAILED - Invalid conversation_id format: $conversation_id" >> "$DUMP_DIR/error.log"
+  exit 0
+fi
+
+LOG_DIR="$CURSOR_PROJECT_DIR/.cursor/chat-transcripts"
+if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
+  echo "$(date -u): FAILED - Cannot create directory $LOG_DIR. Permission issue?" >> "$DUMP_DIR/error.log"
   exit 0
 fi
 
