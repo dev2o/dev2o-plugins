@@ -78,3 +78,15 @@ def test_executor_stamps_the_spawn_line_itself() -> None:
     text = AGENT_MAIN.read_text(encoding="utf-8")
     assert "CURSOR_CONVERSATION_ID" in text
     assert "Advise. <id>" in text
+
+
+def test_the_agent_description_carries_the_stamp_instruction() -> None:
+    # __agent-main.md rides beforeSubmitPrompt, which cloud agents never fire.
+    # The description is the only copy of this instruction a cloud Executor reads.
+    description = next(
+        line
+        for line in ADVISOR.read_text(encoding="utf-8").splitlines()
+        if line.startswith("description:")
+    )
+    assert "CURSOR_CONVERSATION_ID" in description
+    assert "Advise. <your own conversation id" in description

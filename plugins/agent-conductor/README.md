@@ -95,6 +95,18 @@ Both files must be tracked by git, since a cloud agent clones the repo fresh. Ma
 
 `cloud/hooks.json` mirrors the plugin's own [`hooks/hooks.json`](hooks/hooks.json) minus `sessionStart`. Keep them in step when you add an event.
 
+### What actually fires in the cloud
+
+Measured on run `bc-46559db3` across 131 captured events, with the project shim installed. Cursor's docs list more events than this as supported.
+
+| Fires | Never fires |
+|---|---|
+| `beforeReadFile`, `beforeShellExecution`, `afterShellExecution`, `preToolUse` (Grep only), `postToolUse`, `postToolUseFailure`, `afterFileEdit` | `sessionStart`, `beforeSubmitPrompt`, `preToolUse` on `Task`, `afterAgentResponse`, `afterAgentThought`, `preCompact`, `subagentStop` |
+
+Two consequences. `preToolUse` on `Task` never runs, so nothing hook-side stamps the advisor spawn line, which is why the Executor stamps it and why that instruction lives in the `advisor` agent description rather than only in `__agent-main.md`. And `beforeSubmitPrompt` never runs, so the orchestrator context in `__agent-main.md` is not injected on a cloud VM at all; a project that wants those rules there has to put them somewhere the agent reads on its own, such as a committed `AGENTS.md`.
+
+`cloud/hooks.json` still registers the events that never fire. They cost nothing when absent, and registering them is how the next run finds out that Cursor started delivering them.
+
 ### Verifying a cloud run
 
 This repository installs the launcher on itself, so a cloud agent started here exercises the shim on the first tool call. From the project root:
