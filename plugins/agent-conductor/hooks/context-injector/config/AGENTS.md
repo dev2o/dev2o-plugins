@@ -85,9 +85,9 @@ Keep files short. Subagents already have full agent definitions in `.cursor/agen
 ## Verifying
 
 ```bash
-make hooks-debug-on
-# spawn subagent via Task tool
-make hooks-debug-tail
+# spawn a subagent via the Task tool, then read what the hook received
+cat /tmp/cursor-hook-debug/latest-preToolUse-payload.json
+tail -20 /tmp/cursor-hook-debug/error.log
 ```
 
 IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for `advisor`, when the stamped `Advise. <id>` line is present).
