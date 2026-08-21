@@ -250,6 +250,17 @@ def test_launcher_fails_open_on_an_unknown_event(tmp_path: Path) -> None:
     assert json.loads(result.stdout) == {}
 
 
+def test_the_harness_config_targets_the_working_tree() -> None:
+    # This repository is the plugin, and a cloud agent may have no plugin
+    # installed at all, so its own harness has to dispatch to the checkout.
+    harness = REPO_ROOT.parents[1] / ".cursor" / "hooks.json"
+    config = json.loads(harness.read_text(encoding="utf-8"))
+    commands = [entry["command"] for entries in config["hooks"].values() for entry in entries]
+    assert commands
+    for command in commands:
+        assert command.startswith("AGENT_CONDUCTOR_PLUGIN_ROOT=plugins/agent-conductor "), command
+
+
 def test_cloud_hooks_json_omits_session_start() -> None:
     config = json.loads(CLOUD_HOOKS.read_text(encoding="utf-8"))
     events = config["hooks"]
