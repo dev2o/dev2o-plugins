@@ -1,14 +1,14 @@
 # Agent Conductor
 
-**Standing instructions for one Cursor agent, not for all of them.**
+**Give your main agent a standing prompt your subagents never see.**
 
-Cursor has two places for instructions that apply on every turn. A rule with `alwaysApply`, or an `AGENTS.md`. Both go to every agent in the workspace. The agent you are talking to reads them. So does every subagent it spawns.
+Cursor has two places for instructions that apply on every turn, a rule with `alwaysApply` and an `AGENTS.md`. Both are broadcasts. The agent you are talking to reads them. So does every subagent it spawns.
 
-That breaks as soon as you use subagents. Write "delegate implementation to a subagent, never write code in this thread" and your workers read it too, so they delegate instead of working. Write "you are the orchestrator" and five agents believe it at once.
+That breaks the moment you use subagents. Write "delegate implementation to a subagent, never write code in this thread" and your workers read it too, so they delegate instead of working. Write "you are the orchestrator" and five agents believe it at once.
 
-Agent Conductor gives each role its own file.
+Agent Conductor addresses each instruction to one role.
 
-![How Agent Conductor routes context, compared with a broadcast rule](docs/addressed-context.png)
+![A broadcast rule reaches every agent, so the workers delegate too. Agent Conductor addresses one file per role, so the workers work.](docs/addressed-context.png)
 
 | File | Who reads it | When it arrives |
 | --- | --- | --- |
@@ -70,11 +70,16 @@ The plugin ships a default `__agent-main.md`. Override it in your project, per f
    ```
 
    ```text
-   2026-08-21T17:40:04Z cid=bc-09cb2003-...  decision=inject reason=main agent
-   2026-08-21T17:49:05Z cid=bc-88f10553-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:08:28Z cid=bc-ae333be9-...  decision=inject reason=main agent
+   2026-08-21T20:11:35Z cid=bc-9c6794f7-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:14:57Z cid=bc-b75cb214-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:14:57Z cid=bc-0df7a8ca-...  decision=skip   reason=prompt matches a recorded spawn
+   2026-08-21T20:14:58Z cid=bc-f14c2cd5-...  decision=skip   reason=prompt matches a recorded spawn
    ```
 
-Steps 3 and 4 are the whole product. The second log line is the subagent being kept out.
+   Those lines are from one real Cloud Agent session in this repository. One main agent injected, four subagents kept out.
+
+Steps 3 and 4 are the whole product. Every `skip` line is a subagent that did not get told it was the orchestrator.
 
 Keeping it out is harder than it sounds. On a Cloud Agent it is genuinely hard. A spawned child arrives with a fresh `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`, which is exactly what a main agent looks like. Three signals settle it, in order. The payload names the child when it can. `subagentStart` carries the child's own id. Failing both, the spawn hook already knows the exact prompt each child will receive, so the routing hook skips a prompt it recognizes and remembers that conversation id for later turns.
 
@@ -84,7 +89,13 @@ Unknown sessions get injected. A broken registry costs you subagent isolation, n
 
 The subagent path rewrites the Task prompt through `updated_input` on `preToolUse`. The main-agent path returns `additional_context` on `beforeSubmitPrompt`, and the agent receives it as a system reminder on that turn.
 
-Cursor's hooks reference does not list `additional_context` as an output field for `beforeSubmitPrompt`, though it arrives. That reference is behind the implementation in the other direction too, listing two input fields for the hook where the real payload carries twelve. Step 3 of the quickstart is how you confirm the delivery on your own build, and it is worth running once after an upgrade, because the plugin depends on behavior Cursor has not written down.
+Cursor's hooks reference does not list `additional_context` as an output field for `beforeSubmitPrompt`, though it arrives. The input side is undocumented too, and it is not the same on every surface. A Cloud Agent delivered five fields on the build this was last checked against, `conversation_id`, `generation_id`, `hook_event_name`, `composer_mode` and `prompt`. Read your own rather than trusting that list.
+
+```bash
+jq 'keys' /tmp/cursor-hook-debug/latest-beforeSubmitPrompt-payload.json
+```
+
+Step 3 of the quickstart is how you confirm the delivery on your own build, and it is worth running once after an upgrade, because the plugin depends on behavior Cursor has not written down.
 
 ## Configuration
 

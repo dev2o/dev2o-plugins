@@ -4,14 +4,14 @@
     "name": "dev2o"
   },
   "metadata": {
-    "description": "Cursor plugins for multi-agent orchestration, starting with per-agent context routing in Agent Conductor",
+    "description": "Cursor plugins for people who run more than one agent at a time",
     "version": "0.1.25"
   },
   "plugins": [
     {
       "name": "agent-conductor",
       "source": "plugins/agent-conductor",
-      "description": "Standing instructions addressed to one Cursor agent instead of broadcast to all of them, plus a gated advisor subagent, orchestrator memory, and scrubbed transcripts"
+      "description": "Give your main agent a standing prompt your subagents never see. One instruction file per agent role, in the Cursor IDE and on Cloud Agents."
     }
   ]
 }
