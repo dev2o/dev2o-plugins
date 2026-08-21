@@ -1,18 +1,18 @@
 # Agent Conductor
 
-**Give your main agent a standing prompt your subagents never see.**
+**Give your main agent a standing prompt that goes to it and no other agent.**
 
 Cursor has two places for instructions that apply on every turn, an `AGENTS.md` and an always-on rule. Both are broadcasts. Put "delegate all implementation to a subagent, never write code in this thread" in either one and the agent you are talking to obeys it. So does every subagent it spawns. Your workers delegate instead of working, and nothing gets built.
 
-Agent Conductor addresses each instruction to one role. `__agent-main.md` reaches the agent you are chatting with and nothing else. Add `agent-explore.md` and it reaches `explore` subagents when they spawn. A role with no file is sent nothing at all.
+Agent Conductor addresses each instruction to one role. The agent you are chatting with reads `__agent-main.md`, and nothing else does. Add `agent-explore.md` and `explore` subagents read that one when they spawn. A role you never write a file for is sent nothing at all.
 
 ![A broadcast rule reaches every agent, so the workers delegate too. Agent Conductor addresses one file per role, so the workers work.](plugins/agent-conductor/docs/addressed-context.png)
 
-The main agent's copy is read from disk before every prompt you submit and handed over as hook context rather than as a message, so it never piles up in the thread. Edit the file mid-conversation and your next prompt uses the new text.
+Read [the plugin README](plugins/agent-conductor/README.md) for the quickstart and the configuration reference. The same routing runs in the Cursor IDE and on Cloud Agents, which need [one extra step](plugins/agent-conductor/docs/cloud-agents.md).
 
-The same routing runs in the Cursor IDE and on Cloud Agents.
+### The same prompt on every turn, without filling the thread
 
-Read [the plugin README](plugins/agent-conductor/README.md) for the quickstart and the configuration reference, and [Cloud Agents](plugins/agent-conductor/docs/cloud-agents.md) for the one extra step a cloud run needs.
+The main agent's copy is read from disk before every prompt you submit and handed over as hook context rather than as a message. Instructions pasted into a chat stay in it, so rewording them leaves the old copies behind to argue with the new ones. This way there is only ever the current one. Edit the file mid-conversation and your next prompt uses the new text.
 
 ### The specialist is the boss, the orchestrator only routes
 

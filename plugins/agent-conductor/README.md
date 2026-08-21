@@ -1,6 +1,6 @@
 # Agent Conductor
 
-**Give your main agent a standing prompt your subagents never see.**
+**Give your main agent a standing prompt that goes to it and no other agent.**
 
 Cursor has two places for instructions that apply on every turn, a rule with `alwaysApply` and an `AGENTS.md`. Both are broadcasts. The agent you are talking to reads them. So does every subagent it spawns.
 
