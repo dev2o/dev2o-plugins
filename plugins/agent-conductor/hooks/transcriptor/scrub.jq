@@ -10,13 +10,24 @@ def redact_secrets:
   if type == "string" then
     gsub("\\b(?:OP_|TAVILY)[A-Z0-9_]+\\s*[=:]\\s*\\K(?!\\[REDACTED\\])\\S+"; "[REDACTED]")
     | gsub("\\b[A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|API)[A-Za-z0-9_]*\\s*[=:]\\s*\\K(?!\\[REDACTED\\])\\S+"; "[REDACTED]")
+    | gsub("(?i)\\bpass(?:word|wd)=[\"']?\\K(?!\\[REDACTED\\])[^\\s\"'&]+"; "[REDACTED]")
+    | gsub("(?i)\\bauthorization\\s*:\\s*(?:bearer|basic|token)\\s+[\"']?\\K(?!\\[REDACTED\\])(?=[^\\s\"']*[0-9_=.-]|[^\\s\"']{16})[^\\s\"']+"; "[REDACTED]")
+    | gsub("(?i)--(?:(?:api|auth|access)[-_]?key|(?:(?:api|auth|access|client|refresh)[-_])?(?:token|secret|password|passwd))[=\\s][\"']?\\K(?!\\[REDACTED\\])(?=[^\\s\"']*[0-9_=.-]|[^\\s\"']{16})[^\\s\"']+"; "[REDACTED]")
+    | gsub("(?:^|\\s)--?u(?:ser)?[=\\s][\"']?[A-Za-z0-9_.@-]+:\\K(?![/@]|[0-9]+(?:[^A-Za-z0-9_]|$))[^\\s\"']+"; "[REDACTED]")
+    | gsub("://[^\\s:/@\"']*:\\K[^\\s:/@\"']+(?=@)"; "[REDACTED]")
     # Redact known standalone token formats globally
     | gsub("sk-[A-Za-z0-9_-]{16,}"; "[REDACTED]")
-    | gsub("gh[poa]_[A-Za-z0-9]{30,}"; "[REDACTED]")
+    | gsub("gh[aporsu]_[A-Za-z0-9]{30,}"; "[REDACTED]")
     | gsub("github_pat_[A-Za-z0-9_]+"; "[REDACTED]")
     | gsub("xox[baprs]-[A-Za-z0-9-]+"; "[REDACTED]")
     | gsub("ops_[A-Za-z0-9]{16,}"; "[REDACTED]")
+    | gsub("crsr_[A-Za-z0-9]{32,}"; "[REDACTED]")
+    | gsub("\\b(?:AKIA|ASIA)[A-Z0-9]{16}\\b"; "[REDACTED]")
+    | gsub("\\bAIza[A-Za-z0-9_-]{35}"; "[REDACTED]")
+    | gsub("\\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}"; "[REDACTED]")
+    | gsub("\\bnpm_[A-Za-z0-9]{20,}"; "[REDACTED]")
     | gsub("eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+"; "[REDACTED]")
+    | gsub("-----BEGIN [A-Z ]*PRIVATE KEY-----\\K[^-]+"; "[REDACTED]")
   else . end;
 
 # 3. Safe recursive application wrapper

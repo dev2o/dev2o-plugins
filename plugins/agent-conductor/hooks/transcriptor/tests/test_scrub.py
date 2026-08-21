@@ -28,6 +28,22 @@ def _read_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in lines if line.strip()]
 
 
+def _scrubbed_command(tmp_path: Path, command: str) -> str:
+    payload = json.loads((FIXTURES / "before_shell_execution_secret.json").read_text())
+    payload["command"] = command
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "85189265-b5cb-454b-b201-bc4532062073.jsonl"
+    return _read_jsonl(out)[0]["command"]
+
+
+def _scrubbed_shell_output(tmp_path: Path, output: str) -> str:
+    payload = json.loads((FIXTURES / "after_shell_execution.json").read_text())
+    payload["output"] = output
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl"
+    return _read_jsonl(out)[0]["output"]
+
+
 def test_audit_writes_scrubbed_jsonl(tmp_path: Path) -> None:
     payload = json.loads((FIXTURES / "before_submit_email.json").read_text())
     result = _run_audit(tmp_path, payload)
@@ -164,6 +180,138 @@ def test_audit_shell_output_is_still_redacted(tmp_path: Path) -> None:
     row = _read_jsonl(tmp_path / ".cursor" / "chat-transcripts" / "663268e0-f424-494a-a543-3de2743795b5.jsonl")[0]
     assert "super-secret-value" not in row["output"]
     assert "[REDACTED]" in row["output"]
+
+
+def test_audit_redacts_cursor_api_key(tmp_path: Path) -> None:
+    key = "crsr_d04dacee78262bc80c1722d8ea63db44b16cbf424836285161b2427d08da1fe1"
+    command = _scrubbed_command(tmp_path, f"echo {key} > /tmp/note.txt")
+    assert key not in command
+    assert command == "echo [REDACTED] > /tmp/note.txt"
+
+
+def test_audit_redacts_authorization_bearer_header(tmp_path: Path) -> None:
+    token = "f7c3bc1d808e04732adf679965ccc34ca7ae3441"
+    command = _scrubbed_command(
+        tmp_path,
+        f'curl -H "Authorization: Bearer {token}" https://api.cursor.com/v0/agents',
+    )
+    assert token not in command
+    assert command == 'curl -H "Authorization: Bearer [REDACTED]" https://api.cursor.com/v0/agents'
+
+
+def test_audit_redacts_authorization_basic_header(tmp_path: Path) -> None:
+    credential = "YWRtaW46aHVudGVyMg=="
+    command = _scrubbed_command(tmp_path, f"curl -H 'Authorization: Basic {credential}' https://example.com/api")
+    assert credential not in command
+    assert command == "curl -H 'Authorization: Basic [REDACTED]' https://example.com/api"
+
+
+def test_audit_redacts_credential_bearing_cli_flags(tmp_path: Path) -> None:
+    token = "f7c3bc1d808e04732adf679965ccc34ca7ae3441"
+    command = _scrubbed_command(tmp_path, f'gh auth login --token "{token}" --hostname github.com')
+    assert token not in command
+    assert command == 'gh auth login --token "[REDACTED]" --hostname github.com'
+
+
+def test_audit_redacts_basic_auth_user_flag(tmp_path: Path) -> None:
+    command = _scrubbed_command(tmp_path, "curl -u admin:hunter2correcthorse https://example.com/api")
+    assert "hunter2correcthorse" not in command
+    assert command == "curl -u admin:[REDACTED] https://example.com/api"
+
+
+def test_audit_leaves_numeric_uid_gid_pairs_alone(tmp_path: Path) -> None:
+    command = _scrubbed_command(tmp_path, "docker run --rm -u 1000:1000 node:20 npm test")
+    assert command == "docker run --rm -u 1000:1000 node:20 npm test"
+
+
+def test_audit_leaves_date_format_strings_alone(tmp_path: Path) -> None:
+    command = _scrubbed_command(tmp_path, "date -u +%H:%M:%S && ls -la --time-style=+%H:%M:%S .")
+    assert command == "date -u +%H:%M:%S && ls -la --time-style=+%H:%M:%S ."
+
+
+def test_audit_leaves_key_file_flags_alone(tmp_path: Path) -> None:
+    command = _scrubbed_command(tmp_path, "curl --key client.key --cert client.crt https://mtls.example.com/")
+    assert command == "curl --key client.key --cert client.crt https://mtls.example.com/"
+
+
+def test_audit_redacts_password_in_connection_url(tmp_path: Path) -> None:
+    command = _scrubbed_command(tmp_path, "psql postgres://appuser:s3cr3tdbpass@db.internal:5432/production")
+    assert "s3cr3tdbpass" not in command
+    assert command == "psql postgres://appuser:[REDACTED]@db.internal:5432/production"
+
+
+def test_audit_redacts_password_in_connection_url_without_a_user(tmp_path: Path) -> None:
+    command = _scrubbed_command(tmp_path, "redis-cli -u redis://:s3cr3tredispass@cache.internal:6379/0 ping")
+    assert "s3cr3tredispass" not in command
+    assert command == "redis-cli -u redis://:[REDACTED]@cache.internal:6379/0 ping"
+
+
+def test_audit_redacts_lowercase_password_assignment(tmp_path: Path) -> None:
+    command = _scrubbed_command(tmp_path, 'psql "host=db.internal user=appuser password=s3cr3tdbpass dbname=production"')
+    assert "s3cr3tdbpass" not in command
+    assert command == 'psql "host=db.internal user=appuser password=[REDACTED] dbname=production"'
+
+
+def test_audit_redacts_aws_access_key_id(tmp_path: Path) -> None:
+    output = _scrubbed_shell_output(
+        tmp_path,
+        '{"AccessKeyId":"AKIAIOSFODNN7EXAMPLE","Arn":"arn:aws:iam::123456789012:user/dev"}',
+    )
+    assert "AKIAIOSFODNN7EXAMPLE" not in output
+    assert output == '{"AccessKeyId":"[REDACTED]","Arn":"arn:aws:iam::123456789012:user/dev"}'
+
+
+def test_audit_redacts_google_api_key(tmp_path: Path) -> None:
+    key = "AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY"
+    command = _scrubbed_command(tmp_path, f"curl 'https://maps.googleapis.com/maps/api/geocode/json?key={key}&address=nyc'")
+    assert key not in command
+    assert command == "curl 'https://maps.googleapis.com/maps/api/geocode/json?key=[REDACTED]&address=nyc'"
+
+
+def test_audit_redacts_stripe_secret_key(tmp_path: Path) -> None:
+    # Long enough for the 16-character rule, short of the 24 GitHub's own push
+    # protection matches on. A realistic-length fixture here blocks the push.
+    key = "sk_live_NOTAREALKEY000000"
+    command = _scrubbed_command(tmp_path, f"curl https://api.stripe.com/v1/charges -u {key}:")
+    assert key not in command
+    assert command == "curl https://api.stripe.com/v1/charges -u [REDACTED]:"
+
+
+def test_audit_redacts_npm_registry_token(tmp_path: Path) -> None:
+    token = "npm_wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEab"
+    command = _scrubbed_command(tmp_path, f"npm config set //registry.npmjs.org/:_authToken={token}")
+    assert token not in command
+    assert command == "npm config set //registry.npmjs.org/:_authToken=[REDACTED]"
+
+
+def test_audit_redacts_github_server_to_server_token(tmp_path: Path) -> None:
+    token = "ghs_16C7e42F292c6912E7710c838347Ae178B4a"
+    output = _scrubbed_shell_output(tmp_path, f"remote token {token} expires in 1h")
+    assert token not in output
+    assert output == "remote token [REDACTED] expires in 1h"
+
+
+def test_audit_redacts_private_key_pem_body(tmp_path: Path) -> None:
+    body = "MIIEpAIBAAKCAQEA3Zx9kQfLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ"
+    output = _scrubbed_shell_output(
+        tmp_path,
+        f"-----BEGIN RSA PRIVATE KEY-----\n{body}\n-----END RSA PRIVATE KEY-----",
+    )
+    assert body not in output
+    assert output == "-----BEGIN RSA PRIVATE KEY-----[REDACTED]-----END RSA PRIVATE KEY-----"
+
+
+def test_audit_leaves_prose_about_keys_and_tokens_alone(tmp_path: Path) -> None:
+    prose = (
+        "Explain how API key rotation works: the token is read from the keychain, "
+        "the password manager holds the secret, and each credential has a key id. "
+        "Pass the --token flag to gh, or send the Authorization: Bearer header instead."
+    )
+    payload = json.loads((FIXTURES / "before_submit_prompt_secret.json").read_text())
+    payload["prompt"] = prose
+    _run_audit(tmp_path, payload)
+    out = tmp_path / ".cursor" / "chat-transcripts" / "29767380-b541-41b6-a58a-639adea36baa.jsonl"
+    assert _read_jsonl(out)[0]["prompt"] == prose
 
 
 def test_audit_after_file_edit_drops_edit_bodies(tmp_path: Path) -> None:

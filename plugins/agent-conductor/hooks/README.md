@@ -39,7 +39,7 @@ Chat transcripts and tool payloads can swell to hundreds of megabytes during lon
 
 ### Audit Logging & Redaction
 * **`scrub.jq`:** The scrubbing filter applied to every transcript line. It makes one pass per pattern over strings under `command`, `prompt`, `tool_input`, `tool_output`, `output`, `text`, and `error_message`.
-  * Uses Oniguruma `\K` (keep match start) regex patterns to strip API keys (`sk-...`, `github_pat_...`, AWS/Slack tokens, JWTs) while preserving variable names.
+  * Uses Oniguruma `\K` (keep match start) regex patterns to strip known token shapes (`crsr_...`, `sk-...`, `github_pat_...`, AWS/Slack/Stripe/Google tokens, JWTs, private key bodies) and the syntax that carries a credential (`Authorization` headers, `--token` style flags, `-u user:password`, URL userinfo) while preserving the surrounding text.
   * Uses recursive traversal (`walk/1`) to scrub strings nested in structured tool input and output without type-trap crashes.
   * Automatically truncates massive string payloads (capped at 16KB) and drops bulky tool read bodies to prevent audit log bloat.
 
