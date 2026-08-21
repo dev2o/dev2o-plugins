@@ -110,5 +110,5 @@
     <text x="690" y="500" font-size="12.5" fill="#4f46e5">Any project overrides any file, per file, without forking the plugin.</text>
   </g>
 
-  <text x="32" y="560" font-size="13" fill="#64748b">Works the same in the Cursor IDE and on Cursor Cloud Agents.</text>
+  <text x="32" y="560" font-size="13" fill="#64748b">The same routing runs in the Cursor IDE and on Cloud Agents, which load it through the bundled launcher.</text>
 </svg>
