@@ -16,7 +16,7 @@ Agent Conductor addresses each instruction to one role.
 | `agent-explore.md` | subagents of type `explore` | when the agent spawns one |
 | `agent-{subagent_type}.md` | subagents of that exact type | when the agent spawns one |
 
-No file for a role means nothing is sent to that role. The `agent-` prefix is fixed and the suffix is the subagent type verbatim, so `explore` needs `agent-explore.md`.
+No file for a role means nothing is sent to that role. The `agent-` prefix is fixed and the suffix is the subagent type verbatim, so `explore` needs `agent-explore.md`. Only `__agent-main.md` ships with the plugin. The rest are files you add, which is why its name is the odd one out, reserved rather than matched against a type.
 
 ## The main agent's copy never lands in the thread
 
@@ -122,11 +122,12 @@ Project overrides live under your project root:
 ```text
 .cursor/dev2o-agent-conductor/config/
   __agent-main.md
-  agent-advisor.md
   agent-explore.md
 ```
 
-Resolution is per file, against `CURSOR_PROJECT_DIR`. A project file wins over the plugin's bundled copy, and the files you do not override keep the bundled default. Bundled defaults live in [`hooks/context-injector/config/`](hooks/context-injector/config/).
+Resolution is per file, against `CURSOR_PROJECT_DIR`. A project file wins over the plugin's bundled copy. Only `__agent-main.md` has a bundled copy to win over, in [`hooks/context-injector/config/`](hooks/context-injector/config/); every `agent-{subagent_type}.md` is a file you create, and a type you never write a file for is sent nothing.
+
+There is no `agent-advisor.md`. The advisor is the one type the spawn hook handles before it looks for a context file, so a file of that name would never be read.
 
 Subagent files may use two tokens, substituted at spawn time only when present:
 

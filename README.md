@@ -1,18 +1,14 @@
-# dev2o plugins
-
-Cursor plugins for people who run more than one agent at a time.
-
-## Agent Conductor
+# Agent Conductor
 
 **Give your main agent a standing prompt your subagents never see.**
 
 Cursor has two places for instructions that apply on every turn, an `AGENTS.md` and an always-on rule. Both are broadcasts. Put "delegate all implementation to a subagent, never write code in this thread" in either one and the agent you are talking to obeys it. So does every subagent it spawns. Your workers delegate instead of working, and nothing gets built.
 
-Agent Conductor addresses each instruction to one role. `__agent-main.md` reaches the agent you are chatting with and nothing else. `agent-explore.md` reaches `explore` subagents when they spawn. A role with no file gets nothing.
+Agent Conductor addresses each instruction to one role. `__agent-main.md` reaches the agent you are chatting with and nothing else. Add `agent-explore.md` and it reaches `explore` subagents when they spawn. A role with no file is sent nothing at all.
 
 ![A broadcast rule reaches every agent, so the workers delegate too. Agent Conductor addresses one file per role, so the workers work.](plugins/agent-conductor/docs/addressed-context.png)
 
-The main agent's copy is read from disk before every prompt you submit and handed over as hook context rather than as a message. It never piles up in the thread, so an agent six turns into a conversation is reading exactly one copy. Edit the file mid-conversation and the next turn uses the new text.
+The main agent's copy is read from disk before every prompt you submit and handed over as hook context rather than as a message. That matters for a second reason. Instructions pasted into a chat stay in it, so rewording them leaves the old copies behind to argue with the new ones. This way the conversation holds one copy at turn twenty, not twenty, and editing the file mid-conversation changes the very next turn.
 
 It is also what lets you tell the orchestrator to stay out of its specialists' way. The bundled `__agent-main.md` overrides Cursor's own advice to write a detailed brief for each subagent, and has the main agent pass your words through verbatim instead. A brief is a paraphrase, and a paraphrase carries the orchestrator's guess at the answer. Your specialists keep their own standing instructions rather than following whatever framing arrived with the task. That is another instruction you cannot write as a broadcast, because the subagents would read it too.
 
@@ -26,14 +22,16 @@ Three pieces that came out of running that routing on real work. A read-only `ad
 
 ## Install
 
-Clone the repo and link the plugin into Cursor's local plugin directory, then run **Developer: Reload Window**.
+The plugin needs `jq` and `python3` on `PATH`.
+
+Clone this repository and link the plugin into Cursor's local plugin directory, then run **Developer: Reload Window**.
 
 ```bash
 git clone https://github.com/dev2o/dev2o-plugins.git
 ln -s "$PWD/dev2o-plugins/plugins/agent-conductor" ~/.cursor/plugins/local/agent-conductor
 ```
 
-For a team, open **Dashboard -> Plugins**, click **Add Marketplace**, choose **Import from Repo**, and give it this repository's URL. Teammates install from **Customize** after that.
+For a team, this repository doubles as a Cursor plugin marketplace. Open **Dashboard -> Plugins**, click **Add Marketplace**, choose **Import from Repo**, and give it this repository's URL. Teammates install Agent Conductor from **Customize** after that.
 
 ## Working on the plugins
 

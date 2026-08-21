@@ -253,6 +253,31 @@ const checks = [
     },
   },
   {
+    name: "no doc lists a config file for a subagent the spawn hook intercepts",
+    run() {
+      const spawnHook = read(
+        `${plugin}/hooks/context-injector/subagent-context-pre-tool-use.sh`
+      );
+      const intercepted = [
+        ...spawnHook.matchAll(/SUBAGENT_TYPE" == "([a-z-]+)"/g),
+      ].map((m) => m[1]);
+      const failures = [];
+      for (const doc of docs) {
+        for (const [, block] of read(doc).matchAll(/```[a-z]*\n([^`]+)\n```/g)) {
+          for (const line of block.split("\n").map((l) => l.trim())) {
+            for (const type of intercepted) {
+              if (line === `agent-${type}.md`)
+                failures.push(
+                  `${doc} lists agent-${type}.md, which the spawn hook never reads`
+                );
+            }
+          }
+        }
+      }
+      return failures;
+    },
+  },
+  {
     name: "what the README quotes from the bundled prompt is in the bundled prompt",
     run() {
       const quoted = [
