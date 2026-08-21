@@ -437,8 +437,8 @@ def collapse_ws(text: str) -> str:
 
 USAGE_BRIEF = (
     "brief: not a spawn line. Pass your spawn line verbatim, one of:\n"
-    '  "Advise. <executor_id>"     (advisor — full transcript view)\n'
-    '  "CID:<executor_id>"         (alias — same full view)'
+    '  "Advise. <executor_id>"     (advisor, budgeted senior view)\n'
+    '  "CID:<executor_id>"         (alias, same view)'
 )
 
 
@@ -1055,7 +1055,7 @@ def build_parser() -> argparse.ArgumentParser:
     show_p.add_argument(
         "--full",
         action="store_true",
-        help="Ignore budget; include thinking; do not truncate",
+        help="Ignore the budget and include thinking. Tool summaries stay abbreviated",
     )
     show_p.add_argument(
         "--budget",

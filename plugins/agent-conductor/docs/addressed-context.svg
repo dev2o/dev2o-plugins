@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 600" width="1320" height="600" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="ar-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#2563eb"/>
+    </marker>
+    <marker id="ar-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#0d9488"/>
+    </marker>
+    <marker id="ar-violet" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1320" height="600" fill="#ffffff"/>
+
+  <text x="32" y="30" font-size="15" font-weight="600" fill="#0f172a">Standing instructions for one agent, not for all of them</text>
+
+  <g>
+    <rect x="32" y="48" width="592" height="472" rx="14" fill="#fbfbfd" stroke="#e2e8f0" stroke-width="1.5"/>
+    <rect x="58" y="70" width="104" height="24" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="110" y="86" font-size="11" font-weight="700" fill="#64748b" letter-spacing="0.8" text-anchor="middle">BROADCAST</text>
+    <text x="58" y="122" font-size="17" font-weight="600" fill="#0f172a">AGENTS.md or an always-on rule</text>
+
+    <rect x="228" y="146" width="200" height="50" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="328" y="177" font-size="14" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" fill="#334155" text-anchor="middle">AGENTS.md</text>
+
+    <path d="M 328 196 L 118 316" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#ar-grey)"/>
+    <path d="M 328 196 L 258 316" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#ar-grey)"/>
+    <path d="M 328 196 L 398 316" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#ar-grey)"/>
+    <path d="M 328 196 L 538 316" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#ar-grey)"/>
+
+    <g>
+      <rect x="58" y="322" width="120" height="86" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="118" y="348" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">Main agent</text>
+      <rect x="70" y="360" width="96" height="26" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+      <text x="118" y="377" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#64748b" text-anchor="middle">AGENTS.md</text>
+    </g>
+    <g>
+      <rect x="198" y="322" width="120" height="86" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="258" y="348" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">explore</text>
+      <rect x="210" y="360" width="96" height="26" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+      <text x="258" y="377" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#64748b" text-anchor="middle">AGENTS.md</text>
+    </g>
+    <g>
+      <rect x="338" y="322" width="120" height="86" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="398" y="348" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">advisor</text>
+      <rect x="350" y="360" width="96" height="26" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+      <text x="398" y="377" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#64748b" text-anchor="middle">AGENTS.md</text>
+    </g>
+    <g>
+      <rect x="478" y="322" width="120" height="86" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="538" y="348" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">code delegate</text>
+      <rect x="490" y="360" width="96" height="26" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+      <text x="538" y="377" font-size="9.5" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#64748b" text-anchor="middle">AGENTS.md</text>
+    </g>
+
+    <text x="58" y="452" font-size="13.5" fill="#334155">One text, every agent. There is no way to say</text>
+    <text x="58" y="474" font-size="13.5" fill="#334155">&#8220;this part is for the agent I am talking to.&#8221;</text>
+    <text x="58" y="500" font-size="12.5" fill="#94a3b8">A rule telling the orchestrator to delegate also tells each worker to delegate.</text>
+  </g>
+
+  <g>
+    <rect x="664" y="48" width="624" height="472" rx="14" fill="#fbfbfd" stroke="#c7d2fe" stroke-width="1.5"/>
+    <rect x="690" y="70" width="104" height="24" rx="12" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1"/>
+    <text x="742" y="86" font-size="11" font-weight="700" fill="#4f46e5" letter-spacing="0.8" text-anchor="middle">ADDRESSED</text>
+    <text x="690" y="122" font-size="17" font-weight="600" fill="#0f172a">Agent Conductor</text>
+
+    <rect x="684" y="146" width="140" height="50" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="754" y="177" font-size="12" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" fill="#1d4ed8" text-anchor="middle">__agent-main.md</text>
+
+    <rect x="832" y="146" width="140" height="50" rx="10" fill="#ccfbf1" stroke="#0d9488" stroke-width="1.5"/>
+    <text x="902" y="177" font-size="12" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" fill="#0f766e" text-anchor="middle">agent-explore.md</text>
+
+    <rect x="980" y="146" width="140" height="50" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="1050" y="177" font-size="12" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" fill="#6d28d9" text-anchor="middle">agent-advisor.md</text>
+
+    <path d="M 754 196 L 754 316" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#ar-blue)"/>
+    <path d="M 902 196 L 902 316" stroke="#0d9488" stroke-width="2" fill="none" marker-end="url(#ar-green)"/>
+    <path d="M 1050 196 L 1050 316" stroke="#7c3aed" stroke-width="2" fill="none" marker-end="url(#ar-violet)"/>
+
+    <g>
+      <rect x="690" y="322" width="128" height="86" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="754" y="348" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">Main agent</text>
+      <rect x="702" y="360" width="104" height="26" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+      <text x="754" y="377" font-size="9" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#1d4ed8" text-anchor="middle">__agent-main.md</text>
+    </g>
+    <g>
+      <rect x="838" y="322" width="128" height="86" rx="10" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/>
+      <text x="902" y="348" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">explore</text>
+      <rect x="850" y="360" width="104" height="26" rx="6" fill="#ccfbf1" stroke="#5eead4" stroke-width="1"/>
+      <text x="902" y="377" font-size="9" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#0f766e" text-anchor="middle">agent-explore.md</text>
+    </g>
+    <g>
+      <rect x="986" y="322" width="128" height="86" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="1050" y="348" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">advisor</text>
+      <rect x="998" y="360" width="104" height="26" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+      <text x="1050" y="377" font-size="9" font-family="'JetBrains Mono', ui-monospace, monospace" fill="#6d28d9" text-anchor="middle">agent-advisor.md</text>
+    </g>
+    <g>
+      <rect x="1134" y="322" width="128" height="86" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="1198" y="348" font-size="12" font-weight="600" fill="#64748b" text-anchor="middle">code delegate</text>
+      <text x="1198" y="379" font-size="10.5" fill="#94a3b8" text-anchor="middle">no file, nothing sent</text>
+    </g>
+
+    <text x="690" y="452" font-size="13.5" fill="#334155">One file per role. Each agent receives only the file addressed to it,</text>
+    <text x="690" y="474" font-size="13.5" fill="#334155">re-delivered on every prompt and never left behind in the thread.</text>
+    <text x="690" y="500" font-size="12.5" fill="#4f46e5">Any project overrides any file, per file, without forking the plugin.</text>
+  </g>
+
+  <text x="32" y="560" font-size="13" fill="#64748b">The same routing runs in the Cursor IDE and on Cloud Agents, which load it through the bundled launcher.</text>
+</svg>

@@ -4,14 +4,14 @@
     "name": "dev2o"
   },
   "metadata": {
-    "description": "Cursor plugins for multi-agent orchestration and agent workflows",
-    "version": "0.1.24"
+    "description": "Cursor plugins for multi-agent orchestration, starting with per-agent context routing in Agent Conductor",
+    "version": "0.1.25"
   },
   "plugins": [
     {
       "name": "agent-conductor",
       "source": "plugins/agent-conductor",
-      "description": "Gives your main agent persistent memory, an on-call advisor for hard decisions, and a searchable transcript of every session."
+      "description": "Standing instructions addressed to one Cursor agent instead of broadcast to all of them, plus a gated advisor subagent, orchestrator memory, and scrubbed transcripts"
     }
   ]
 }
