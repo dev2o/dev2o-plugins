@@ -8,6 +8,5 @@
   },
   "keywords": ["orchestrator", "hooks", "subagents", "transcripts", "memory", "advisor"],
   "agents": "./agents/",
-  "skills": "./skills/",
   "hooks": "./hooks/hooks.json"
 }
