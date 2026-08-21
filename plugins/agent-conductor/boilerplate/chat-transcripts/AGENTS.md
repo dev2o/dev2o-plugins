@@ -7,4 +7,4 @@ Scrubbed hook events are stored here as `{conversation_id}.jsonl` (`conversation
 - Capture is performed automatically by the plugin's transcript hook.
 - Browsing transcripts is the job of the **advisor** subagent, which runs `.cursor/chat-transcripts/_transcripts.py brief` with its spawn line. Launch the advisor rather than trying to parse these files yourself.
 
-`_transcripts.py` is synced from the plugin on session start. Do not edit it.
+`_transcripts.py` is synced from the plugin on session start, or on the first hook that fires when a project uses the cloud launcher. Do not edit it.

@@ -10,15 +10,17 @@ Neither `advisor` nor `exe-advisor` uses `agent-advisor.md`. The hook does not p
 
 ### `advisor` (gatekeeper)
 
-The Executor sets `prompt` to `Advise.` When the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`), the hook delivers `Advise. <executor_id>`.
+The Executor stamps its own conversation id, so `prompt` is `Advise. <executor_id>`. The hook validates that stamp rather than supplying it: a matching id passes through unchanged, a different id is denied, and a bare `Advise.` gets the id when the parent Task `conversation_id` is a safe basename (non-empty, no `/`, no `..`).
 
-If the incoming prompt already carries that same id, the stamp is unchanged. If it carries a different id, the hook denies the spawn.
+The Executor stamps because the hook is not guaranteed to run. Cloud agents load hooks only from the project's own `.cursor/hooks.json`, never from an installed plugin, so on a cloud VM a bare `Advise.` stays bare and the gatekeeper is blind.
 
 The gatekeeper fetches the log itself:
 
 ```
 python3 .cursor/chat-transcripts/_transcripts.py brief "<spawn line verbatim>"
 ```
+
+That path is synced by `sessionStart`, which cloud agents never run. Both advisor agents fall back to the plugin's own copy under `~/.cursor/plugins/cache/`.
 
 `Advise. <id>` selects the triage view (last 10 user, assistant, and tool events) and includes `<escalate>CID:<id></escalate>`.
 
@@ -58,7 +60,9 @@ Context files may include placeholders that the hook substitutes at spawn time:
 
 **Transcripts CLI:** synced to `.cursor/chat-transcripts/_transcripts.py` on each session start (overwrite). Subagents invoke it with a workspace-relative path — no token needed.
 
-**Why the `CURSOR_PROJECT_DIR="{{PROJECT_DIR}}"` prefix:** the CLI resolves the transcript directory from `CURSOR_PROJECT_DIR`. Subagent shells don't inherit it, and without it the CLI would look from the wrong cwd and report "No transcripts found". Baking the resolved project dir into the injected command makes it work from any cwd.
+**Why the advisor agents must run from the project root:** a subagent shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI falls back to walking up from its working directory to find `.cursor/chat-transcripts`. From anywhere under the project that works; from outside it, the CLI reports no transcript.
+
+**Why the Executor stamps the id and the child cannot:** `CURSOR_CONVERSATION_ID` in a subagent shell is that subagent's own id, not its parent's. A child has no way to name the Executor's log, which is why the spawn line carries the id.
 
 **Lazy evaluation:** substitution runs only when a context file contains a token. Subagents without a context file, or with static-only context, incur zero overhead.
 
@@ -81,9 +85,9 @@ Keep files short. Subagents already have full agent definitions in `.cursor/agen
 ## Verifying
 
 ```bash
-make hooks-debug-on
-# spawn subagent via Task tool
-make hooks-debug-tail
+# spawn a subagent via the Task tool, then read what the hook received
+cat /tmp/cursor-hook-debug/latest-preToolUse-payload.json
+tail -20 /tmp/cursor-hook-debug/error.log
 ```
 
 IDE **Execution Log** → `preToolUse` (Task) → check output for `updated_input.prompt` when a file exists (or, for `advisor`, when the stamped `Advise. <id>` line is present).

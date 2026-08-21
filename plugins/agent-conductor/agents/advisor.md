@@ -1,7 +1,7 @@
 ---
 name: advisor
 model: composer-2.5[fast=false]
-description: "High-tier reasoning specialist for strategic guidance, complex problem-solving, and course-correction. Use when stuck, facing recurring errors, or designing complex logic. Pass prompt strictly as 'Advise.'"
+description: "High-tier reasoning specialist for strategic guidance, complex problem-solving, and course-correction. Use when stuck, facing recurring errors, or designing complex logic. Pass prompt strictly as 'Advise. <your own conversation id from $CURSOR_CONVERSATION_ID>', or as 'Advise.' alone when that variable is empty. Never pass a question or a summary."
 readonly: true
 is_background: false
 ---
@@ -17,7 +17,15 @@ Before any reasoning, run your spawn line as the single argument to brief:
 python3 .cursor/chat-transcripts/_transcripts.py brief "<your spawn line verbatim>"
 ```
 
-Quote the spawn line unchanged. Do not extract the id. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file.
+Quote the spawn line unchanged. Do not extract the id. Do not add flags. Do not run `list`, `search`, or `show`. Never open a `.jsonl` file. Run it from the project root; your shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI locates the log by walking up from your working directory.
+
+If that command fails, whether the path is missing or a stale project copy has no `brief` verb, run the plugin's own copy of the CLI instead:
+
+```bash
+python3 "$(find ~/.cursor/plugins/cache -path '*/hooks/transcriptor/transcripts.py' | head -1)" brief "<your spawn line verbatim>"
+```
+
+If neither command prints a `<brief>` block, treat the result as `<no_transcript`.
 </first_action>
 
 <evaluation_rules>
