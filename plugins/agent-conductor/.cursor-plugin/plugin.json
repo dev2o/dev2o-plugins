@@ -1,8 +1,8 @@
 {
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
-  "version": "0.1.23",
-  "description": "Advisor subagent with in-thread advisor-check gating, scrubbed transcript capture with a browse CLI, persistent agent memory, and per-subagent context-injection hooks",
+  "version": "0.1.24",
+  "description": "Gives your main agent persistent memory, an on-call advisor for hard decisions, and a searchable transcript of every session.",
   "skills": "./skills/",
   "author": {
     "name": "dev2o"
