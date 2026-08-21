@@ -128,7 +128,8 @@ def test_launcher_stays_silent_when_a_capture_hook_answers_nothing(tmp_path: Pat
 
 
 def test_launcher_finds_the_deeper_cache_layout(tmp_path: Path) -> None:
-    # Observed on the testing agent's VM: cache/<marketplace>/<sha>/current/<name>/.
+    # A project-side installer left this shape on a real VM, beside Cursor's own
+    # install: cache/<marketplace>/<sha>/current/<name>/.
     home = tmp_path / "home"
     _install_plugin(home, layout="dev2o-plugins/sha/current/agent-conductor")
     result = _run(
