@@ -60,7 +60,9 @@ Context files may include placeholders that the hook substitutes at spawn time:
 
 **Transcripts CLI:** synced to `.cursor/chat-transcripts/_transcripts.py` on each session start (overwrite). Subagents invoke it with a workspace-relative path — no token needed.
 
-**Why the `CURSOR_PROJECT_DIR="{{PROJECT_DIR}}"` prefix:** the CLI resolves the transcript directory from `CURSOR_PROJECT_DIR`. Subagent shells don't inherit it, and without it the CLI would look from the wrong cwd and report "No transcripts found". Baking the resolved project dir into the injected command makes it work from any cwd.
+**Why the advisor agents must run from the project root:** a subagent shell does not inherit `CURSOR_PROJECT_DIR`, so the CLI falls back to walking up from its working directory to find `.cursor/chat-transcripts`. From anywhere under the project that works; from outside it, the CLI reports no transcript.
+
+**Why the Executor stamps the id and the child cannot:** `CURSOR_CONVERSATION_ID` in a subagent shell is that subagent's own id, not its parent's. A child has no way to name the Executor's log, which is why the spawn line carries the id.
 
 **Lazy evaluation:** substitution runs only when a context file contains a token. Subagents without a context file, or with static-only context, incur zero overhead.
 
