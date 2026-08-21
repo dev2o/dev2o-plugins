@@ -51,9 +51,16 @@ if type == "object" then
         .tool_output = "[OMITTED: Tool output dropped to prevent audit log bloat]" 
       else . end
     else . end
-  # Drop shell stdout (afterShellExecution uses .output, not .tool_output)
-  | if .hook_event_name == "afterShellExecution" and .output != null then
-      .output = "[OMITTED: Shell output dropped to prevent audit log bloat]"
+  # Keep the tail of shell stdout (afterShellExecution uses .output, not
+  # .tool_output). An advisor that sees every command and no result can only
+  # guess; errors and summary lines land at the end, so the tail is what earns
+  # its budget. Capped tight because shell output is the bulkiest field here.
+  | if .hook_event_name == "afterShellExecution" and (.output | type) == "string" then
+      .output |= (
+        if length > 1200 then
+          "[TRUNCATED: kept the last 1200 of \(length) bytes]\n" + .[-1200:]
+        else . end
+      )
     else . end
   # Apply redaction recursively across all potential text or structured payloads
   | if .tool_output != null then .tool_output |= maybe_redact else . end
