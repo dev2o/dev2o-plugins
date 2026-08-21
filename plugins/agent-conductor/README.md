@@ -36,6 +36,8 @@ MESSAGING OVERRIDE: Overrides the Task tool's native guidance to "provide a high
 
 Cursor's `Task` tool asks the spawning agent to write a detailed brief. That is fair advice for one agent handing off a chore. It is the wrong default the moment your subagents have standing instructions of their own, because a brief is a paraphrase and a paraphrase carries the orchestrator's reading of the problem. Hand your `explore` agent "the user wants a refactor, I think the bug is in the parser" and you have pre-empted the search you asked for. The specialist follows the fresher, more specific-sounding lead and quietly drops its own guidance.
 
+![Describing the task hands the specialist the orchestrator's hunch. Routing it hands over your words and lets the specialist keep its own instructions.](docs/route-dont-describe.png)
+
 So the default tells the main agent to pass your words through verbatim with file paths attached, and to let subagents pull their own data. The orchestrator decides who runs. It does not decide what they will find.
 
 The advisor is the strict case. Its spawn line is `Advise. <conversation_id>` and nothing else, because a hand-written summary is where the main agent launders its own assumptions into the review it went and asked for.
