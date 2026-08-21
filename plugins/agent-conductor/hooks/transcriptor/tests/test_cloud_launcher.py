@@ -259,22 +259,17 @@ def test_launcher_fails_open_on_an_unknown_event(tmp_path: Path) -> None:
     assert json.loads(result.stdout) == {}
 
 
-PLUGIN_ROOT_PREFIX = "AGENT_CONDUCTOR_PLUGIN_ROOT=plugins/agent-conductor "
-
-
-def test_the_harness_config_is_cloud_hooks_plus_the_working_tree_override() -> None:
-    # This repository is the plugin, and a cloud agent may have no plugin
-    # installed at all, so its own harness dispatches to the checkout. Beyond
-    # that one prefix the two files must stay identical: they drifted once, when
-    # an event was removed from cloud/hooks.json and the harness kept it.
+def test_the_repo_harness_matches_cloud_hooks_json() -> None:
+    # This repository commits the same launcher config a consumer copies from
+    # cloud/hooks.json. They drifted once when an event was removed from
+    # cloud/hooks.json and the harness kept it.
     harness = json.loads((REPO_ROOT.parents[1] / ".cursor" / "hooks.json").read_text(encoding="utf-8"))
     cloud = json.loads(CLOUD_HOOKS.read_text(encoding="utf-8"))
     assert harness["hooks"].keys() == cloud["hooks"].keys()
     for event, entries in harness["hooks"].items():
         assert len(entries) == len(cloud["hooks"][event]), event
         for entry, expected in zip(entries, cloud["hooks"][event]):
-            assert entry["command"].startswith(PLUGIN_ROOT_PREFIX), entry["command"]
-            assert entry["command"][len(PLUGIN_ROOT_PREFIX):] == expected["command"]
+            assert entry["command"] == expected["command"], entry["command"]
             assert entry.get("matcher") == expected.get("matcher"), event
 
 
