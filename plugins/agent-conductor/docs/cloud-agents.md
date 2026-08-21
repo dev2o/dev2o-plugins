@@ -40,6 +40,12 @@ The launcher also does not install itself and does not write `.cursor/hooks.json
 
 `sessionStart` never fires. Cursor documents that. Everything else the plugin registers has been observed firing on a cloud VM, including `preToolUse` on `Task`, `beforeSubmitPrompt`, `subagentStart`, `subagentStop`, `stop`, `afterAgentResponse` and `afterAgentThought`.
 
+One of those is not uniform. `afterAgentResponse` fires for the main agent and not for subagents. In a session in this repository that spawned ten of them, the main agent's log carried ten of the event and every child's carried none. A subagent's prompt, thinking, and tool calls reach its transcript. Its final answer does not. Point the advisor at a child session and the conclusion it is looking for was never written down.
+
+```bash
+jq -r '.hook_event_name' .cursor/chat-transcripts/*.jsonl | sort | uniq -c
+```
+
 Read a short session's absences carefully. Measure early and only `beforeShellExecution`, `afterShellExecution` and `beforeReadFile` have appeared, because the rest need the session to do the triggering thing first. `preToolUse` on `Task` needs a subagent spawn, `subagentStop` needs one to finish, `afterFileEdit` needs an edit. Two separate runs concluded those events were dead when the session had simply not reached them yet. Judge delivery from `cloud-launcher.log` after real work, not from a first look.
 
 `preToolUse` on `Task` is not guaranteed to have fired by the time the main agent spawns the advisor, so the main agent stamps the spawn line itself and the hook validates the stamp. That instruction lives in the `advisor` agent description as well as in `__agent-main.md`, so it survives whether or not the routing reached the main agent.
