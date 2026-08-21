@@ -2,7 +2,15 @@
 
 Per-agent context files. `__agent-main.md` is the only system-level one: it holds the main-agent (orchestrator) grounding rules, injected at `beforeSubmitPrompt`. All other `agent-{subagent_type}.md` files are optional per-subagent prompts injected at `preToolUse` on Task via `subagent-context-pre-tool-use.sh`.
 
-**`__agent-main.md` reaches the main agent only.** A cloud Task child is indistinguishable from a main agent in the `beforeSubmitPrompt` payload: new `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id`, no `subagent_type`. Left to the payload, every subagent would receive the orchestrator rules, including the delegation protocol telling it to hand work to subagents. So the spawn hook records the exact prompt each child will receive, and the inject hook skips any prompt it recognizes from that registry, then remembers the child's conversation id for its later turns. The registry lives in `$CURSOR_HOOK_REGISTRY_DIR`, defaulting to `/tmp/cursor-hook-debug/registry`.
+**`__agent-main.md` reaches the main agent only.** Left to the `beforeSubmitPrompt` payload alone, every subagent would receive the orchestrator rules, including the delegation protocol telling it to hand work to subagents, because a cloud Task child arrives as a new `conversation_id` with `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`.
+
+Three signals identify a child, tried in that order, because each is unavailable on some surface:
+
+1. **The payload itself.** A desktop payload names the child through `subagent_type` or a `parent_conversation_id` that differs from `conversation_id`.
+2. **`subagentStart`.** The event carries the child's own id, so the binding is exact. Registered on both the plugin's `hooks.json` and `cloud/hooks.json`.
+3. **The spawn prompt.** The spawn hook records the exact prompt each child will receive, including the rewritten advisor line, and the inject hook skips a prompt it recognizes, then remembers that conversation id for later turns and resumes.
+
+The registry lives in `$CURSOR_HOOK_REGISTRY_DIR`, defaulting to `/tmp/cursor-hook-debug/registry`, alongside `inject-decisions.log`, which records why each prompt was injected or skipped. Unknown sessions are injected, so a registry failure degrades to the old behavior rather than starving the main agent.
 
 When the main agent spawns a subagent (Task tool, slash command, etc.), the hook reads `tool_input.subagent_type`. If a matching file exists here, its contents are prepended to the Task `prompt`.
 

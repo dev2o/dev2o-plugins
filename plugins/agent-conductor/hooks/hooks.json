@@ -89,6 +89,12 @@
         "timeout": 30
       }
     ],
+    "subagentStart": [
+      {
+        "command": "${CURSOR_PLUGIN_ROOT}/hooks/context-injector/subagent-start-register.sh",
+        "timeout": 30
+      }
+    ],
     "subagentStop": [
       {
         "command": "${CURSOR_PLUGIN_ROOT}/hooks/transcriptor/audit.sh",

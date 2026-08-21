@@ -55,15 +55,24 @@ PROMPT=$(printf '%s\n' "$INPUT" | jq -r '.prompt // empty' 2>/dev/null || echo "
 # never receive it. A cloud Task child looks exactly like a main agent here, so
 # identity comes from the spawn registry: the prompt the spawn hook recorded on
 # the child's first turn, and the conversation id from then on.
-if is_known_subagent "$CONVERSATION_ID"; then
-  echo '{"continue": true}'
-  exit 0
-fi
-if [[ -n "$PROMPT" ]] && spawn_recorded "$PROMPT"; then
+if NATIVE_TYPE=$(native_child_type "$INPUT"); then
+  log_inject_decision "$CONVERSATION_ID" "skip" "payload names it a child ($NATIVE_TYPE)"
   claim_subagent "$CONVERSATION_ID"
   echo '{"continue": true}'
   exit 0
 fi
+if is_known_subagent "$CONVERSATION_ID"; then
+  log_inject_decision "$CONVERSATION_ID" "skip" "registered child"
+  echo '{"continue": true}'
+  exit 0
+fi
+if [[ -n "$PROMPT" ]] && spawn_recorded "$PROMPT"; then
+  log_inject_decision "$CONVERSATION_ID" "skip" "prompt matches a recorded spawn"
+  claim_subagent "$CONVERSATION_ID"
+  echo '{"continue": true}'
+  exit 0
+fi
+log_inject_decision "$CONVERSATION_ID" "inject" "main agent"
 
 CONTEXT=$(orchestrator_context 2>/dev/null || echo "")
 if [[ -z "$CONTEXT" ]]; then

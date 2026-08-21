@@ -83,6 +83,12 @@
         "timeout": 30
       }
     ],
+    "subagentStart": [
+      {
+        "command": "AGENT_CONDUCTOR_PLUGIN_ROOT=plugins/agent-conductor .cursor/hooks/agent-conductor-hook.sh hooks/context-injector/subagent-start-register.sh",
+        "timeout": 30
+      }
+    ],
     "subagentStop": [
       {
         "command": "AGENT_CONDUCTOR_PLUGIN_ROOT=plugins/agent-conductor .cursor/hooks/agent-conductor-hook.sh hooks/transcriptor/audit.sh",
