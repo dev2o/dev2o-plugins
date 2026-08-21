@@ -102,8 +102,6 @@ if [[ "$SUBAGENT_TYPE" == "advisor" ]]; then
     allow_unchanged
   fi
   NEW_PROMPT="Advise. ${CONVERSATION_ID}"
-elif [[ "$SUBAGENT_TYPE" == "exe-advisor" ]]; then
-  allow_unchanged
 else
   if ! command -v build_subagent_context >/dev/null 2>&1; then
     fail_open "Function 'build_subagent_context' not found after sourcing $CONTEXT_LIB"

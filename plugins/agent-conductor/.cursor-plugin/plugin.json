@@ -1,8 +1,9 @@
 {
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
-  "version": "0.1.22",
-  "description": "Turns the main agent into a disciplined orchestrator: an advisor subagent that reviews the live conversation transcript, hooks that capture scrubbed transcripts with a browse CLI, persistent file-based agent memory, and per-subagent context injection",
+  "version": "0.1.23",
+  "description": "Advisor subagent with in-thread advisor-check gating, scrubbed transcript capture with a browse CLI, persistent agent memory, and per-subagent context-injection hooks",
+  "skills": "./skills/",
   "author": {
     "name": "dev2o"
   },

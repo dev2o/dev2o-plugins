@@ -124,32 +124,7 @@ def test_hook_advisor_mismatched_id_denied(tmp_path: Path) -> None:
     assert POISON not in json.dumps(out)
 
 
-def test_hook_leaves_exe_advisor_prompt_alone(tmp_path: Path) -> None:
-    _write_poison(tmp_path, REAL_ID)
-    out = _hook(
-        tmp_path,
-        {
-            "tool_name": "Task",
-            "conversation_id": GATEKEEPER_ID,
-            "tool_input": {
-                "subagent_type": "exe-advisor",
-                "prompt": f"CID:{REAL_ID}",
-            },
-        },
-    )
-    assert out == {"permission": "allow"}
-
-
-def test_hook_path_does_not_read_logs() -> None:
-    hook = HOOK.read_text(encoding="utf-8")
-    lib = CONTEXT_SH.read_text(encoding="utf-8")
-    for src in (hook, lib):
-        assert "transcripts.py" not in src
-        assert ".jsonl" not in src
-        assert " show " not in src
-
-
-def test_brief_triage_hands_back_the_senior_token(tmp_path: Path) -> None:
+def test_brief_advise_uses_senior_view(tmp_path: Path) -> None:
     events = [
         {"hook_event_name": "beforeSubmitPrompt", "prompt": "add a --json flag"}
     ]
@@ -170,15 +145,22 @@ def test_brief_triage_hands_back_the_senior_token(tmp_path: Path) -> None:
     _write_session(tmp_path, REAL_ID, events)
     result = _cli(tmp_path, "brief", f"Advise. {REAL_ID}")
     assert result.returncode == 0
-    assert result.stdout.count(f"CID:{REAL_ID}") == 1
-    assert f"<escalate>CID:{REAL_ID}</escalate>" in result.stdout
-    assert 'audience="triage"' in result.stdout
-    assert "turn 0" not in result.stdout
+    assert "<escalate>" not in result.stdout
+    assert 'audience="senior"' in result.stdout
     assert "turn 11" in result.stdout
     assert "add a --json flag" in result.stdout
 
 
-def test_brief_senior_never_offers_escalation(tmp_path: Path) -> None:
+def test_hook_path_does_not_read_logs() -> None:
+    hook = HOOK.read_text(encoding="utf-8")
+    lib = CONTEXT_SH.read_text(encoding="utf-8")
+    for src in (hook, lib):
+        assert "transcripts.py" not in src
+        assert ".jsonl" not in src
+        assert " show " not in src
+
+
+def test_brief_cid_alias_uses_senior_view(tmp_path: Path) -> None:
     _write_session(
         tmp_path,
         REAL_ID,
