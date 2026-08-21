@@ -72,3 +72,27 @@ Hook-captured, scrubbed audit logs land here as `{conversation_id}.jsonl`. Seede
 ```
 
 Bundled boilerplate: [`boilerplate/agent-memory/`](boilerplate/agent-memory/), [`boilerplate/chat-transcripts/`](boilerplate/chat-transcripts/)
+
+---
+
+## Cloud agents
+
+A cloud agent loads the plugin's agents but **not** the plugin's hooks. Cursor loads cloud hooks only from the project's own `.cursor/hooks.json` (plus team and enterprise hooks on Enterprise plans), and `sessionStart` does not run in the cloud at all. With no extra setup, a cloud run gets the `advisor` and `exe-advisor` subagents and nothing else: no transcript capture, no boilerplate seeding, no orchestrator injection.
+
+The advisor still answers rather than breaking. The Executor stamps `Advise. <id>` itself, and both advisor agents fall back to the plugin's own copy of the CLI, so a cloud gatekeeper with no captured log reports `<no_transcript …/>` and asks the Executor to restate its objective.
+
+To run the full suite on a cloud VM, commit the launcher into the project:
+
+```bash
+mkdir -p .cursor/hooks
+cp <plugin>/cloud/hooks.json .cursor/hooks.json
+cp <plugin>/cloud/agent-conductor-hook.sh .cursor/hooks/
+chmod +x .cursor/hooks/agent-conductor-hook.sh
+git add -f .cursor/hooks.json .cursor/hooks/agent-conductor-hook.sh
+```
+
+Both files must be tracked by git, since a cloud agent clones the repo fresh. Many projects ignore `.cursor/`, hence the `-f`. The launcher resolves the installed plugin under `~/.cursor/plugins/cache/`, dispatches the event to the plugin's own hook script, and syncs `_transcripts.py` into the project on whichever hook fires first, standing in for the `sessionStart` that never runs. It fails open on every error, exactly like the hooks it delegates to.
+
+`cloud/hooks.json` mirrors the plugin's own [`hooks/hooks.json`](hooks/hooks.json) minus `sessionStart`. Keep them in step when you add an event.
+
+Bundled launcher: [`cloud/`](cloud/)
