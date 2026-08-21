@@ -2,7 +2,7 @@
 
 **Standing instructions for one Cursor agent, not for all of them.**
 
-Cursor gives you two places to put instructions that should apply on every turn: a rule with `alwaysApply`, or an `AGENTS.md`. Both go to every agent in the workspace. The agent you are talking to reads them. So does every subagent it spawns.
+Cursor has two places for instructions that apply on every turn. A rule with `alwaysApply`, or an `AGENTS.md`. Both go to every agent in the workspace. The agent you are talking to reads them. So does every subagent it spawns.
 
 That breaks as soon as you use subagents. Write "delegate implementation to a subagent, never write code in this thread" and your workers read it too, so they delegate instead of working. Write "you are the orchestrator" and five agents believe it at once.
 
@@ -24,7 +24,7 @@ No file for a role means nothing is sent to that role. The `agent-` prefix is fi
 
 ![The same instructions on every turn without filling the thread](docs/thread-cost.svg)
 
-Edit the file and the next prompt uses the new text. That is the part people notice first: you can iterate on the orchestrator's instructions mid-conversation without restarting the chat or scrolling past six copies of your own boilerplate.
+Edit the file and the next prompt uses the new text. That is the part people notice first. You can rework the orchestrator's instructions in the middle of a conversation without restarting the chat or scrolling past six copies of your own boilerplate.
 
 ## Install
 
@@ -47,34 +47,36 @@ The plugin ships a default `__agent-main.md`. Override it in your project, per f
 
 1. Create the override and put a line in it you will recognize.
 
-```bash
-mkdir -p .cursor/dev2o-agent-conductor/config
-cat > .cursor/dev2o-agent-conductor/config/__agent-main.md <<'MD'
-<orchestrator_rules>
-- Delegate every implementation task to a subagent. Do not edit files in this thread.
-- Codename for this project is BLUE HERON.
-</orchestrator_rules>
-MD
-```
+   ```bash
+   mkdir -p .cursor/dev2o-agent-conductor/config
+   cat > .cursor/dev2o-agent-conductor/config/__agent-main.md <<'MD'
+   <orchestrator_rules>
+   - Delegate every implementation task to a subagent. Do not edit files in this thread.
+   - Codename for this project is BLUE HERON.
+   </orchestrator_rules>
+   MD
+   ```
 
 2. Open a new chat and send any prompt.
 
-3. Ask the agent for the codename. It answers BLUE HERON, because the hook handed it the file. Now spawn a subagent and ask it the same question. It has never heard of BLUE HERON, and it edits files instead of delegating.
+3. Ask the agent for the codename. It answers BLUE HERON, because the hook handed it the file.
 
-That contrast is the whole product.
+4. Spawn a subagent and ask it the same question. It has never heard of BLUE HERON, and it edits files instead of delegating.
 
-4. Check what the hook decided, one line per prompt.
+5. Read what the hook decided, one line per prompt.
 
-```bash
-cat /tmp/cursor-hook-debug/registry/inject-decisions.log
-```
+   ```bash
+   cat /tmp/cursor-hook-debug/registry/inject-decisions.log
+   ```
 
-```text
-2026-08-21T17:40:04Z cid=bc-09cb2003-0d36-4d08-a80a-60b84652afe2 decision=inject reason=main agent
-2026-08-21T17:49:05Z cid=bc-88f10553-634d-5685-8875-321949cf44f1 decision=skip reason=prompt matches a recorded spawn
-```
+   ```text
+   2026-08-21T17:40:04Z cid=bc-09cb2003-...  decision=inject reason=main agent
+   2026-08-21T17:49:05Z cid=bc-88f10553-...  decision=skip   reason=prompt matches a recorded spawn
+   ```
 
-The second line is a subagent being kept out. Telling a child apart from its parent is harder than it sounds, and on a Cloud Agent it is genuinely hard: a spawned child arrives with a fresh `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`, which is exactly what a main agent looks like. Three signals settle it, in order. The payload names the child when it can. `subagentStart` carries the child's own id. Failing both, the spawn hook already knows the exact prompt each child will receive, so the inject hook skips a prompt it recognizes and remembers that conversation id for later turns.
+Steps 3 and 4 are the whole product. The second log line is the subagent being kept out.
+
+Keeping it out is harder than it sounds. On a Cloud Agent it is genuinely hard. A spawned child arrives with a fresh `conversation_id`, `composer_mode` of `agent`, no `parent_conversation_id` and no `subagent_type`, which is exactly what a main agent looks like. Three signals settle it, in order. The payload names the child when it can. `subagentStart` carries the child's own id. Failing both, the spawn hook already knows the exact prompt each child will receive, so the routing hook skips a prompt it recognizes and remembers that conversation id for later turns.
 
 Unknown sessions get injected. A broken registry costs you subagent isolation, not the orchestrator's instructions.
 
@@ -119,15 +121,17 @@ Three pieces that came out of running the routing above for real work.
 
 ### An advisor you cannot spam
 
-`advisor` is a read-only subagent that reads your conversation and tells the main agent what to do differently. It never speaks to you. The port of the idea from Claude Code is the easy part; the hard part is that an agent asking for advice tends to ask constantly, and asking costs a full subagent turn.
+`advisor` is a read-only subagent that reads your conversation and tells the main agent what to do differently. It never speaks to you. Porting the idea from Claude Code was the easy part. The hard part is that an agent with a second opinion on tap asks for one constantly, and every ask costs a full subagent turn.
 
-So the gate is a skill, not a suggestion. The main agent runs `/advisor-check` in its own thread first, against three cases: mechanical work continues in-thread, context-gathered-but-nothing-attempted goes back and attempts a plan, and only a real architecture fork, a persistent failure, or a conflict earns the spawn.
+So the gate is a skill rather than a suggestion. The main agent runs `/advisor-check` in its own thread first. Mechanical work continues in-thread. Context gathered with nothing attempted goes back and attempts a plan. An architecture fork, a persistent failure, or a conflict between the code and earlier advice earns the spawn.
 
-The spawn line is `Advise. <conversation_id>` and nothing else. No question, no summary. The advisor pulls the transcript itself, which is the point: a hand-written summary is where the main agent quietly launders its own assumptions into the review. A hook validates the stamped id and denies a mismatch.
+The spawn line is `Advise. <conversation_id>` and nothing else. No question, no summary. The advisor pulls the transcript itself, and that is the point. A hand-written summary is where the main agent quietly launders its own assumptions into the review. A hook validates the stamped id and denies a mismatch.
 
 ### `MEMORY.md` for the orchestrator
 
-`.cursor/agent-memory/orchestrator/MEMORY.md` is an index of memory files, seeded once and then yours. The rules that govern it, [`boilerplate/agent-memory/AGENTS.md`](boilerplate/agent-memory/AGENTS.md), are re-synced from the plugin on every session start, so plugin updates to those rules land without you merging anything. Same idea as Claude Code's memory directory, sorted into user, feedback, project, and reference entries, with the "verify a memory before acting on it" rule that keeps a stale note from being treated as current fact.
+`.cursor/agent-memory/orchestrator/MEMORY.md` is an index of memory files, seeded once and then yours. Entries sort into user, feedback, project, and reference, the same shape Claude Code uses.
+
+The rules that govern it live in [`boilerplate/agent-memory/AGENTS.md`](boilerplate/agent-memory/AGENTS.md) and re-sync from the plugin on every session start, so an update to those rules lands without you merging anything. The rule worth knowing is the one that says a memory naming a file or a flag is a claim about the past, so the agent checks the file still exists before recommending it.
 
 ### Transcripts, and a CLI to read them
 
@@ -147,10 +151,10 @@ bc-09cb2003-0d36-4d08-a80a-60b84652afe2  2026-08-21 17:40:04  -     137     /pot
 bc-88f10553-634d-5685-8875-321949cf44f1  2026-08-21 17:49:05  -     91      Read-only fact extraction, no edits. Repo root is /worksp...
 
 Usage:
-  .cursor/chat-transcripts/_transcripts.py list [--all | -n N]           # list recent transcripts
-  .cursor/chat-transcripts/_transcripts.py show bc-09cb2003-... # conversation view (~60k chars)
-  .cursor/chat-transcripts/_transcripts.py show bc-09cb2003-... --only user,assistant
-  .cursor/chat-transcripts/_transcripts.py search "keywords" [-n N]      # keyword search
+  _transcripts.py list [--all | -n N]                  # list recent transcripts
+  _transcripts.py show bc-09cb2003-...                 # conversation view (~60k chars)
+  _transcripts.py show bc-09cb2003-... --only user,assistant
+  _transcripts.py search "keywords" [-n N]             # keyword search
 
 Categories for --only: user, assistant, thinking, tool, error, meta
 Default show hides thinking; see the footer for optional flags.
@@ -170,7 +174,9 @@ Default show hides thinking; see the footer for optional flags.
 | Local identifiers | `session_id`, `workspace_roots` and `transcript_path` deleted, `user_email` cut to the part before the `@` |
 | Long strings | capped at 16 KB |
 
-Redaction runs over agent text, tool output, shell output, and error messages. It does not run over the text of the shell commands themselves, so a literal secret typed into a command survives capture. Read a file before you commit it. A shipped `.cursorignore` keeps agents from reading the `.jsonl` files directly, and `beforeShellExecution` blocks commands whose job is dumping the environment, `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`.
+Redaction runs over agent text, tool output, shell output, and error messages. It does not run over the text of the shell commands themselves, so a secret written literally into a command survives capture. Read a file before you commit it.
+
+Two things narrow the blast radius. A shipped `.cursorignore` stops agents from reading the `.jsonl` files directly. `beforeShellExecution` denies commands whose job is dumping the environment, meaning `env`, `printenv`, `export -p`, and `cat`-style reads of `.env`.
 
 ## When a hook fails
 
@@ -186,13 +192,13 @@ For the design rules these scripts hold themselves to, read [`hooks/README.md`](
 ## Layout
 
 ```text
-agents/advisor.md                     read-only advisor subagent
-skills/advisor-check/                  the in-thread gate before spawning it
-hooks/context-injector/                per-agent routing, config/ holds the defaults
-hooks/transcriptor/                    capture, scrub, deny, and the CLI
-boilerplate/                           what gets seeded into .cursor/ on session start
-cloud/                                 the launcher that makes Cloud Agents work
-docs/cloud-agents.md                   cloud setup and verification
+hooks/context-injector/   per-agent routing, and config/ holds the defaults
+hooks/transcriptor/       capture, scrub, deny, and the CLI
+agents/advisor.md         the read-only advisor subagent
+skills/advisor-check/     the in-thread gate before spawning it
+boilerplate/              what lands in .cursor/ on session start
+cloud/                    the launcher that makes Cloud Agents work
+docs/cloud-agents.md      cloud setup and verification
 ```
 
 Tests for the hooks live in [`hooks/transcriptor/tests/`](hooks/transcriptor/tests/) and run with `python3 -m pytest`.
