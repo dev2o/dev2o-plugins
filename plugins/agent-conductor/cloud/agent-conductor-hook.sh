@@ -60,9 +60,9 @@ command -v jq >/dev/null 2>&1 || fail_open "'jq' is not installed in PATH: $PATH
 
 plugin_root() {
   local manifest name root best=""
-  # Depth-agnostic on purpose. Observed layouts include
-  # cache/<marketplace>/<pluginId>/<sha>/ and cache/<marketplace>/<sha>/current/<name>/,
-  # so a fixed-depth glob silently finds nothing on half of them. Newest wins.
+  # Depth-agnostic on purpose. Cursor installs at cache/<marketplace>/<pluginId>/<sha>/,
+  # but a project can run its own installer and leave a tree at some other depth,
+  # which is what a fixed-depth glob silently misses. Newest wins.
   while IFS= read -r manifest; do
     [[ -n "$manifest" ]] || continue
     name=$(jq -r '.name // empty' "$manifest" 2>/dev/null || echo "")
