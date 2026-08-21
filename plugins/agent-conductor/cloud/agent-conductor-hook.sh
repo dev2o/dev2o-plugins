@@ -20,10 +20,14 @@ default_payload() {
   case "$event" in
     beforeShellExecution|beforeReadFile|preToolUse|beforeMCPExecution)
       echo '{"permission": "allow"}' ;;
+    beforeSubmitPrompt)
+      echo '{"continue": true}' ;;
     *)
       echo '{}' ;;
   esac
 }
+
+CLOUD_MANIFEST="$HOME/.cursor/plugins/cache/.cloud-plugin-manifest.json"
 
 fail_open() {
   local reason="$1"
@@ -41,10 +45,19 @@ TARGET="${1:-}"
   if command -v jq >/dev/null 2>&1; then
     event=$(printf '%s\n' "$INPUT" | jq -r '.hook_event_name // "?"' 2>/dev/null || echo "?")
   fi
-  printf '%s event=%s target=%s cursor_agent=%s\n' \
-    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${event:-?}" "${TARGET:-none}" "${CURSOR_AGENT:-unset}" \
+  [[ -f "$CLOUD_MANIFEST" ]] && where="cloud" || where="desktop"
+  printf '%s event=%s target=%s env=%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${event:-?}" "${TARGET:-none}" "$where" \
     >> "$DUMP_DIR/cloud-launcher.log"
 } 2>/dev/null
+
+# Only a cloud VM writes this manifest, and only a cloud VM refuses to load the
+# plugin's own hooks. On desktop the plugin hooks are already running, so
+# dispatching here would double-fire every one of them.
+if [[ ! -f "$CLOUD_MANIFEST" ]]; then
+  default_payload
+  exit 0
+fi
 
 [[ -n "$TARGET" ]] || fail_open "No plugin script argument"
 [[ -n "$INPUT" ]] || fail_open "Received empty stdin"
@@ -67,6 +80,12 @@ PLUGIN_ROOT=$(plugin_root) || fail_open "No installed agent-conductor plugin und
 
 SCRIPT="$PLUGIN_ROOT/$TARGET"
 [[ -f "$SCRIPT" ]] || fail_open "Plugin script missing at $SCRIPT"
+
+export CURSOR_PLUGIN_ROOT="$PLUGIN_ROOT"
+# A project hook runs with the working directory at the project root, so this is
+# a resolved path rather than a guess. The delegated scripts refuse to write
+# anything without it.
+export CURSOR_PROJECT_DIR="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
 
 # sessionStart never runs on a cloud VM, so the CLI the advisor agents call is
 # synced here instead, on whichever hook fires first.

@@ -17,9 +17,15 @@ AUDIT = "hooks/transcriptor/audit.sh"
 TASK_HOOK = "hooks/context-injector/subagent-context-pre-tool-use.sh"
 
 
-def _install_plugin(home: Path) -> Path:
+def _install_plugin(home: Path, cloud: bool = True) -> Path:
     root = home / ".cursor" / "plugins" / "cache" / "dev2o-dev2o-plugins" / "1" / "sha"
     shutil.copytree(REPO_ROOT, root, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    if cloud:
+        manifest = home / ".cursor" / "plugins" / "cache" / ".cloud-plugin-manifest.json"
+        manifest.write_text(
+            json.dumps({"plugins": [{"name": "agent-conductor", "enabledCapabilities": ["static"]}]}),
+            encoding="utf-8",
+        )
     return root
 
 
@@ -119,23 +125,47 @@ def test_launcher_stays_silent_when_a_capture_hook_answers_nothing(tmp_path: Pat
     assert "cloud launcher" not in after[len(before) :]
 
 
+def test_launcher_does_nothing_on_desktop(tmp_path: Path) -> None:
+    # Desktop loads the plugin's own hooks, so dispatching here would double-fire.
+    home = tmp_path / "home"
+    _install_plugin(home, cloud=False)
+    result = _run(
+        AUDIT,
+        {"conversation_id": REAL_ID, "hook_event_name": "beforeSubmitPrompt", "prompt": "desktop"},
+        tmp_path,
+        home,
+    )
+    assert json.loads(result.stdout) == {"continue": True}
+    assert not (tmp_path / ".cursor" / "chat-transcripts").exists()
+
+
+def _cloud_without_plugin(home: Path) -> None:
+    manifest = home / ".cursor" / "plugins" / "cache" / ".cloud-plugin-manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({"plugins": []}), encoding="utf-8")
+
+
 def test_launcher_fails_open_without_an_installed_plugin(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    _cloud_without_plugin(home)
     result = _run(
         AUDIT,
         {"conversation_id": REAL_ID, "hook_event_name": "preToolUse"},
         tmp_path,
-        tmp_path / "empty-home",
+        home,
     )
     assert result.returncode == 0
     assert json.loads(result.stdout) == {"permission": "allow"}
 
 
 def test_launcher_fails_open_on_an_unknown_event(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    _cloud_without_plugin(home)
     result = _run(
         AUDIT,
         {"conversation_id": REAL_ID, "hook_event_name": "afterAgentResponse"},
         tmp_path,
-        tmp_path / "empty-home",
+        home,
     )
     assert result.returncode == 0
     assert json.loads(result.stdout) == {}
