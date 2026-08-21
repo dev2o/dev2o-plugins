@@ -4,6 +4,7 @@
   "version": "0.1.25",
   "description": "Standing instructions addressed to one agent instead of broadcast to all of them. The main agent gets its own prompt, each subagent type gets its own. Also ships a gated advisor subagent, orchestrator memory, and scrubbed transcripts with a browse CLI.",
   "skills": "./skills/",
+  "license": "MIT",
   "author": {
     "name": "dev2o"
   },

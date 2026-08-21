@@ -250,6 +250,22 @@ const checks = [
     },
   },
   {
+    name: "the declared license is a license the repo actually ships",
+    run() {
+      const declared = readJSON(`${plugin}/.cursor-plugin/plugin.json`).license;
+      if (!declared) return ["plugin.json declares no license"];
+      if (!existsSync(resolve(root, "LICENSE")))
+        return [`plugin.json declares ${declared} but there is no LICENSE file`];
+      const body = read("LICENSE");
+      const failures = [];
+      if (declared === "MIT" && !body.startsWith("MIT License"))
+        failures.push(`plugin.json declares MIT but LICENSE is something else`);
+      if (readJSON("package.json").license !== declared)
+        failures.push(`package.json and plugin.json disagree on the license`);
+      return failures;
+    },
+  },
+  {
     name: "the marketplace entry and the plugin manifest describe the same thing",
     run() {
       const entry = readJSON(".cursor-plugin/marketplace.json").plugins[0];
