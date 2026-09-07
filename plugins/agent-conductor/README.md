@@ -12,6 +12,8 @@ Its jobs now live in three smaller plugins from this marketplace:
 
 This leftover plugin ships one always-on rule. On the next agent run it tells the agent the plugin is discontinued, then asks **you** before touching anything.
 
+The same steps are a skill you can run by hand: `/agent-conductor-discontinued`. It does not auto-invoke.
+
 It will not delete files, edit hooks, or uninstall itself without permission.
 
 ## What the rule asks to clean up

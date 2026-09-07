@@ -1,9 +1,10 @@
 {
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "description": "Discontinued. This plugin no longer runs hooks; it ships a notice that Agent Conductor is now advisor, agent-memory, and env-protect.",
   "rules": "./rules/",
+  "skills": "./skills/",
   "license": "MIT",
   "author": {
     "name": "dev2o"

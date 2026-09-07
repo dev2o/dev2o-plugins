@@ -1,7 +1,7 @@
 {
   "name": "agent-memory",
   "displayName": "Agent Memory",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "description": "Persistent file-based memory for workflow subagents without hooks or complex injection.",
   "rules": "./rules/",
   "skills": "./skills/",
