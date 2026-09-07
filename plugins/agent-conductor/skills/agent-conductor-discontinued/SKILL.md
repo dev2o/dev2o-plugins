@@ -45,7 +45,7 @@ Do this in order:
 
 ## Uninstall
 
-After leftovers are gone (or were already gone), tell the user to uninstall this plugin so the always-on notice stops:
+After leftovers are gone (or were already gone), tell the user to uninstall this plugin so the skill goes away:
 
 - Cursor: **Customize → Plugins → Agent Conductor → Uninstall**
 - Local clone: remove the `~/.cursor/plugins/local/agent-conductor` symlink

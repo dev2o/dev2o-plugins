@@ -10,7 +10,7 @@ This repository is a Cursor plugin marketplace. Open **Dashboard → Plugins**, 
 - **[agent-memory](plugins/agent-memory)** — Persistent file-based memory for workflow subagents without hooks or complex injection.
 - **[env-protect](plugins/env-protect)** — Denies `env`, `printenv`, `export -p`, and reads of `.env` files in agent shell commands.
 
-**Agent Conductor is discontinued.** Routing, memory, transcripts, and secret deny used to ship as one plugin. Those jobs now live in the plugins above. The leftover [agent-conductor](plugins/agent-conductor) entry installs a notice that asks before cleaning the old cloud hook shim and `.cursor/chat-transcripts/`.
+**Agent Conductor is discontinued.** Routing, memory, transcripts, and secret deny used to ship as one plugin. Those jobs now live in the plugins above. The leftover [agent-conductor](plugins/agent-conductor) entry ships `/agent-conductor-discontinued`, which asks before cleaning the old cloud hook shim and `.cursor/chat-transcripts/`.
 
 ## Working on the plugins
 

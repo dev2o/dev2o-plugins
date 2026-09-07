@@ -10,13 +10,11 @@ Its jobs now live in three smaller plugins from this marketplace:
 | [agent-memory](../agent-memory) | Persistent file-based memory for workflow subagents. No hooks. |
 | [env-protect](../env-protect) | Denies `env`, `printenv`, `export -p`, and reads of `.env` files. |
 
-This leftover plugin ships one always-on rule. On the next agent run it tells the agent the plugin is discontinued, then asks **you** before touching anything.
-
-The same steps are a skill you can run by hand: `/agent-conductor-discontinued`. It does not auto-invoke.
+This leftover plugin ships `/agent-conductor-discontinued`. It does not auto-invoke. Run it when you want an agent to detect leftover shim files and ask before cleaning them up.
 
 It will not delete files, edit hooks, or uninstall itself without permission.
 
-## What the rule asks to clean up
+## What the skill asks to clean up
 
 Only after you agree, and only these leftovers from the old cloud-hook shim:
 
@@ -25,7 +23,7 @@ Only after you agree, and only these leftovers from the old cloud-hook shim:
 3. Delete `.cursor/chat-transcripts/` (scrubbed session logs plus the old `_transcripts.py` CLI). Say if you want them archived first.
 4. Leave `.cursor/agent-memory/` in place.
 
-Then uninstall the plugin so the notice stops:
+Then uninstall the plugin:
 
 - Cursor: **Customize → Plugins → Agent Conductor → Uninstall**
 - Local clone: remove `~/.cursor/plugins/local/agent-conductor`

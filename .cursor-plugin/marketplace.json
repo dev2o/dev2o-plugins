@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Cursor plugins for people who run more than one agent at a time",
-    "version": "0.1.27"
+    "version": "0.1.28"
   },
   "plugins": [
     {
       "name": "agent-conductor",
       "source": "plugins/agent-conductor",
-      "description": "Discontinued. Installs a one-time notice that guides cleanup and points to advisor, agent-memory, and env-protect."
+      "description": "Discontinued. Run /agent-conductor-discontinued to clean leftover shim files. Use advisor, agent-memory, and env-protect instead."
     },
     {
       "name": "advisor",

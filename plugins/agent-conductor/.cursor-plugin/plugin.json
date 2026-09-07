@@ -1,9 +1,8 @@
 {
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
-  "version": "0.1.27",
-  "description": "Discontinued. This plugin no longer runs hooks; it ships a notice that Agent Conductor is now advisor, agent-memory, and env-protect.",
-  "rules": "./rules/",
+  "version": "0.1.28",
+  "description": "Discontinued. Run /agent-conductor-discontinued to clean leftover shim files. Use advisor, agent-memory, and env-protect instead.",
   "skills": "./skills/",
   "license": "MIT",
   "author": {
