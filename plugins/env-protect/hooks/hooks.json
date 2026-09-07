@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "${CURSOR_PLUGIN_ROOT}/hooks/env-protect.sh",
+        "timeout": 30
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "env-protect",
+  "displayName": "Env Protect",
+  "version": "0.1.26",
+  "description": "Denies env, printenv, export -p, and reads of .env files in agent shell commands. Run /env-protect-setup to install it into a project for Cloud Agents.",
+  "hooks": "./hooks/hooks.json",
+  "skills": "./skills/",
+  "license": "MIT",
+  "author": {
+    "name": "dev2o"
+  },
+  "homepage": "https://github.com/dev2o/dev2o-plugins/tree/main/plugins/env-protect",
+  "repository": "https://github.com/dev2o/dev2o-plugins",
+  "keywords": [
+    "hooks",
+    "secrets",
+    "env",
+    "security"
+  ]
+}

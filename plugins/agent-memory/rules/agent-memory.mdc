@@ -1,0 +1,19 @@
+---
+description: Persistent file-based memory protocol for orchestrators and workflow subagents.
+alwaysApply: true
+---
+
+# Agent Memory Protocol
+
+## For Subagents (Consumers)
+- If your prompt contains a line matching `Memory: <path>`, read that file using the `Read` tool before beginning work.
+- Obey the rules defined in that file's protocol header.
+- Before completing your task, record any newly discovered user preferences, feedback, project facts, or references into the memory file.
+- Update or remove stale entries if current workspace evidence contradicts them.
+- If your prompt does NOT contain a `Memory:` line, you have no memory store; do not search for or touch memory files.
+
+## For Orchestrators (Spawners)
+- When launching a subagent via the `Task` tool: check if `.cursor/memory/<subagent_type>/MEMORY.md` exists.
+- If the file exists, append `Memory: .cursor/memory/<subagent_type>/MEMORY.md` as an exact line to the `prompt` parameter.
+- Never add a `Memory:` line if the file does not exist.
+- Never copy, summarize, or paraphrase memory contents into the prompt; let the subagent read the file directly.

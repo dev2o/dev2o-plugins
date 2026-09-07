@@ -1,0 +1,20 @@
+{
+  "name": "advisor",
+  "displayName": "Advisor",
+  "version": "0.1.26",
+  "description": "Strategic second opinions using native Cursor transcripts. Pinned models, no hooks.",
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "license": "MIT",
+  "author": {
+    "name": "dev2o"
+  },
+  "homepage": "https://github.com/dev2o/dev2o-plugins/tree/main/plugins/advisor",
+  "repository": "https://github.com/dev2o/dev2o-plugins",
+  "keywords": [
+    "advisor",
+    "second-opinion",
+    "subagents",
+    "review"
+  ]
+}

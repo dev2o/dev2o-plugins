@@ -1,9 +1,9 @@
 {
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
-  "version": "0.1.25",
-  "description": "Every instruction you write in Cursor reaches every agent you run. An AGENTS.md or an always-on rule reaches every subagent too, so a rule telling the orchestrator to delegate also tells each worker to delegate. This addresses one instruction file per agent role, re-read before every prompt and never left behind in the thread. The shipped default also stops the orchestrator paraphrasing your task into its specialists, so each subagent keeps its own guidance instead of following the framing that arrived with the job. Works in the Cursor IDE and on Cloud Agents. Also ships a gated advisor subagent, orchestrator memory, and scrubbed transcripts with a browse CLI.",
-  "skills": "./skills/",
+  "version": "0.1.26",
+  "description": "Discontinued. This plugin no longer runs hooks; it ships a notice that Agent Conductor is now advisor, agent-memory, and env-protect.",
+  "rules": "./rules/",
   "license": "MIT",
   "author": {
     "name": "dev2o"
@@ -12,17 +12,10 @@
   "repository": "https://github.com/dev2o/dev2o-plugins",
   "logo": "docs/icon.png",
   "keywords": [
-    "orchestrator",
-    "context-injection",
-    "system-prompt",
-    "agents-md",
-    "rules",
-    "subagents",
-    "hooks",
+    "deprecated",
+    "discontinued",
     "advisor",
-    "memory",
-    "transcripts"
-  ],
-  "agents": "./agents/",
-  "hooks": "./hooks/hooks.json"
+    "agent-memory",
+    "env-protect"
+  ]
 }

@@ -5,13 +5,28 @@
   },
   "metadata": {
     "description": "Cursor plugins for people who run more than one agent at a time",
-    "version": "0.1.25"
+    "version": "0.1.26"
   },
   "plugins": [
     {
       "name": "agent-conductor",
       "source": "plugins/agent-conductor",
-      "description": "Every Cursor instruction you write reaches every agent you run. This gives each role a file only it reads, in the IDE and on Cloud Agents."
+      "description": "Discontinued. Installs a one-time notice that guides cleanup and points to advisor, agent-memory, and env-protect."
+    },
+    {
+      "name": "advisor",
+      "source": "plugins/advisor",
+      "description": "Strategic second opinions using native Cursor transcripts. Pinned models, no hooks."
+    },
+    {
+      "name": "agent-memory",
+      "source": "plugins/agent-memory",
+      "description": "Persistent file-based memory for workflow subagents without hooks or complex injection."
+    },
+    {
+      "name": "env-protect",
+      "source": "plugins/env-protect",
+      "description": "Denies env, printenv, export -p, and reads of .env files in agent shell commands. Run /env-protect-setup to install it into a project for Cloud Agents."
     }
   ]
 }

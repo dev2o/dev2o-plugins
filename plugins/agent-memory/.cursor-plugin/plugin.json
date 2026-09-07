@@ -1,0 +1,20 @@
+{
+  "name": "agent-memory",
+  "displayName": "Agent Memory",
+  "version": "0.1.26",
+  "description": "Persistent file-based memory for workflow subagents without hooks or complex injection.",
+  "rules": "./rules/",
+  "skills": "./skills/",
+  "license": "MIT",
+  "author": {
+    "name": "dev2o"
+  },
+  "homepage": "https://github.com/dev2o/dev2o-plugins/tree/main/plugins/agent-memory",
+  "repository": "https://github.com/dev2o/dev2o-plugins",
+  "keywords": [
+    "agent-memory",
+    "memory",
+    "subagents",
+    "rules"
+  ]
+}
