@@ -18,7 +18,7 @@ This plugin no longer runs hooks, seeds files, or injects context. Its jobs now 
 - `agent-memory` — file-based memory for workflow subagents, no hooks
 - `env-protect` — denies `env`, `printenv`, `export -p`, and reads of `.env` files
 
-Leave `.cursor/agent-memory/` untouched.
+Keep `.cursor/agent-memory/` role stores. Delete only the leftover `.cursor/agent-memory/AGENTS.md` that Conductor used to inject.
 
 ## Detect leftovers
 
@@ -27,6 +27,7 @@ Check, in this order, and report what you find:
 1. `.cursor/hooks.json` contains any `command` that invokes `agent-conductor-hook.sh`
 2. `.cursor/hooks/agent-conductor-hook.sh` exists
 3. `.cursor/chat-transcripts/` exists
+4. `.cursor/agent-memory/AGENTS.md` exists
 
 If none of those exist, skip cleanup and go to **Uninstall**.
 
@@ -41,7 +42,7 @@ Do this in order:
 1. Edit `.cursor/hooks.json`: remove only entries whose `command` invokes `.cursor/hooks/agent-conductor-hook.sh`. Keep unrelated hooks. Drop an event key when its array is empty. If `hooks` is then empty, leave `{"version": 1, "hooks": {}}`, or delete the file only if the user agrees.
 2. Delete `.cursor/hooks/agent-conductor-hook.sh`. If `.cursor/hooks/` is then empty, delete the directory.
 3. `.cursor/chat-transcripts/` may hold scrubbed session logs (`_transcripts.py`, `AGENTS.md`, `.cursorignore`, `*.jsonl`). Ask once more if the user wants them archived first. Then delete the directory.
-4. Do not touch `.cursor/agent-memory/`.
+4. Delete `.cursor/agent-memory/AGENTS.md` if it exists. Leave every other file under `.cursor/agent-memory/` alone. That directory is the live store for the `agent-memory` plugin.
 
 ## Uninstall
 

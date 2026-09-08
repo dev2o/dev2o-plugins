@@ -1,7 +1,7 @@
 {
   "name": "env-protect",
   "displayName": "Env Protect",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "Denies env, printenv, export -p, and reads of .env files in agent shell commands. Run /env-protect-setup to install it into a project for Cloud Agents.",
   "hooks": "./hooks/hooks.json",
   "skills": "./skills/",

@@ -13,7 +13,7 @@ alwaysApply: true
 - If your prompt does NOT contain a `Memory:` line, you have no memory store; do not search for or touch memory files.
 
 ## For Orchestrators (Spawners)
-- When launching a subagent via the `Task` tool: check if `.cursor/memory/<subagent_type>/MEMORY.md` exists.
-- If the file exists, append `Memory: .cursor/memory/<subagent_type>/MEMORY.md` as an exact line to the `prompt` parameter.
+- When launching a subagent via the `Task` tool: check if `.cursor/agent-memory/<subagent_type>/MEMORY.md` exists.
+- If the file exists, append `Memory: .cursor/agent-memory/<subagent_type>/MEMORY.md` as an exact line to the `prompt` parameter.
 - Never add a `Memory:` line if the file does not exist.
 - Never copy, summarize, or paraphrase memory contents into the prompt; let the subagent read the file directly.
