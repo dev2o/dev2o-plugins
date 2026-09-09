@@ -34,7 +34,9 @@ if [[ -z "$COMMAND" ]]; then
   exit 0
 fi
 
-MSG="Blocked: dumping environment variables or reading .env files is not allowed. Test credentials via the tool directly (e.g. command -v op) instead."
+MSG_ENV="Blocked: dumping environment variables or reading .env files is not allowed. Test credentials via the tool directly (e.g. command -v op) instead."
+MSG_OP="Blocked: printing 1Password secret values to the terminal is not allowed. Redirect to a file, pipe into a consumer, or use op run."
+MSG="$MSG_ENV"
 
 # 4. Perform regex checks safely
 # Note: We use printf '%s\n' instead of echo because if the agent generates a command starting with -e or -n,
@@ -47,6 +49,44 @@ elif printf '%s\n' "$COMMAND" | grep -qE '(^|[;&|[:space:]])env([[:space:]]|$|[;
   block_command=true
 elif printf '%s\n' "$COMMAND" | grep -qE '(^|[;&|[:space:]])(cat|less|head|tail|more|type|grep|awk|sed)[[:space:]]+[^;&|[:space:]]*\.env([^A-Za-z0-9_]|$)' 2>/dev/null; then
   block_command=true
+fi
+
+# 4b. 1Password CLI: deny subcommands that print secret values when they are the
+# last stage of a pipeline and stdout is not redirected. `op read x > f`,
+# `op read x | jq`, `op inject -o f`, and `op run` stay allowed.
+op_prints_secret() {
+  local stage="$1"
+  if printf '%s\n' "$stage" | grep -qE '(^|[;&|[:space:]])op[[:space:]]+(environment[[:space:]]+read|read|document[[:space:]]+get)([[:space:]]|$)' 2>/dev/null; then
+    return 0
+  fi
+  if printf '%s\n' "$stage" | grep -qE '(^|[;&|[:space:]])op[[:space:]]+item[[:space:]]+get([[:space:]]|$)' 2>/dev/null \
+    && printf '%s\n' "$stage" | grep -qE '(^|[[:space:]])--reveal([[:space:]]|$)' 2>/dev/null; then
+    return 0
+  fi
+  if printf '%s\n' "$stage" | grep -qE '(^|[;&|[:space:]])op[[:space:]]+inject([[:space:]]|$)' 2>/dev/null \
+    && ! printf '%s\n' "$stage" | grep -qE '(^|[[:space:]])(-o|--out-file)([[:space:]=]|$)' 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+stdout_redirected() {
+  # `>` or `>>` not immediately preceded by `2` (so 2>file and 2>&1 do not count).
+  printf '%s\n' "$1" | grep -qE '(^|[^2>])>' 2>/dev/null
+}
+
+if [[ "$block_command" == "false" ]]; then
+  # Split into segments on newline, ';', '&&', '||'; then take the last pipeline stage.
+  segments=$(printf '%s\n' "$COMMAND" | sed -E 's/&&|\|\|/\n/g; s/;/\n/g' 2>/dev/null || echo "")
+  while IFS= read -r segment; do
+    [[ -n "$segment" ]] || continue
+    last_stage="${segment##*|}"
+    if op_prints_secret "$last_stage" && ! stdout_redirected "$last_stage"; then
+      block_command=true
+      MSG="$MSG_OP"
+      break
+    fi
+  done <<< "$segments"
 fi
 
 # 5. Return deny JSON if a rule matched, otherwise allow

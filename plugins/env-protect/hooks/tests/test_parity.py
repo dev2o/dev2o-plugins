@@ -1,4 +1,4 @@
-"""Byte-identity and differential parity against agent-conductor's deny script."""
+"""Deny/allow corpus for env-protect.sh."""
 
 from __future__ import annotations
 
@@ -8,10 +8,36 @@ from pathlib import Path
 
 import pytest
 
-from conftest import AC_DENY_SH, ENV_PROTECT_SH
+from conftest import ENV_PROTECT_SH
 
-# deny: current regex classes (bare env/printenv/export -p, and reader + .env path)
+# Multi-line script: only stderr is redirected, so `op environment read` prints
+# KEY=VALUE pairs to stdout and should be denied.
+LEAKED_OP_COMMAND = """set +x
+OP_SERVICE_ACCOUNT_TOKEN="$OP_TOKEN" op vault list 2>&1 | head -30
+OP_SERVICE_ACCOUNT_TOKEN="$OP_TOKEN" op whoami 2>&1 | head -20
+OP_SERVICE_ACCOUNT_TOKEN="$OP_TOKEN" op environment read env-id-example 2>/tmp/op-env.out
+if [ $? -eq 0 ]; then
+  awk -F= '{print $1}' /tmp/op-env.out
+else
+  head -c 200 /tmp/op-env.out; echo
+fi
+for name in A B C; do
+  eval "tok=\\$OP_TOKEN_${name}"
+  OP_SERVICE_ACCOUNT_TOKEN="$tok" op vault list 2>&1 | head -15
+done
+rm -f /tmp/op-env.out
+"""
+
+# deny: bare env/printenv/export -p, reader + .env path, and op secret reads to stdout
 DENY_COMMANDS = [
+    LEAKED_OP_COMMAND,
+    "op environment read x",
+    "op environment read x 2>/tmp/o",
+    "op read op://v/i/f",
+    "op item get x --reveal",
+    "op document get d",
+    "op inject -i .env.tpl",
+    "foo && op read op://v/i/f",
     "env",
     "env | grep OP_",
     "printenv",
@@ -32,9 +58,19 @@ DENY_COMMANDS = [
     "env VAR=1 cmd",
 ]
 
-# allow: not covered by the three regexes
+# allow: not covered by the rules
 ALLOW_COMMANDS = [
     "command -v op",
+    # op: non-secret subcommands, or secret output redirected / piped / substituted
+    "op run --env-file=.env -- cmd",
+    "op whoami",
+    "op vault list",
+    "op item get x",
+    "op read op://v/i/f > /tmp/s",
+    "op read op://v/i/f | jq -r .",
+    "op inject -i a -o b",
+    "TOK=$(op read op://v/i/f)",  # known gap: substitution is not detected
+    "awk -F= '{print $1}' /tmp/op-env.out",  # not a .env file
     "node --env-file=.env app.js",
     "ls -la .env",
     "cat .envrc",
@@ -66,24 +102,6 @@ def _run(script: Path, payload: dict, *, cwd: Path | None = None, check: bool = 
         capture_output=True,
         check=check,
         cwd=cwd,
-    )
-
-
-@pytest.mark.skipif(not AC_DENY_SH.is_file(), reason="agent-conductor not in tree")
-def test_byte_identical_to_agent_conductor() -> None:
-    assert ENV_PROTECT_SH.read_bytes() == AC_DENY_SH.read_bytes()
-
-
-@pytest.mark.skipif(not AC_DENY_SH.is_file(), reason="agent-conductor not in tree")
-@pytest.mark.parametrize("command", DENY_COMMANDS + ALLOW_COMMANDS)
-@pytest.mark.parametrize("shape", PAYLOAD_SHAPES)
-def test_output_matches_agent_conductor(command: str, shape: str) -> None:
-    payload = {"command": command} if shape == "command" else {"tool_input": {"command": command}}
-    ours = _run(ENV_PROTECT_SH, payload)
-    theirs = _run(AC_DENY_SH, payload)
-    assert ours.stdout == theirs.stdout
-    assert json.loads(ours.stdout)["permission"] == (
-        "deny" if command in DENY_COMMANDS else "allow"
     )
 
 

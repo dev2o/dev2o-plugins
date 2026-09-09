@@ -8,7 +8,7 @@ Its jobs now live in three smaller plugins from this marketplace:
 | --- | --- |
 | [advisor](../advisor) | Strategic second opinions using native Cursor transcripts. No hooks. |
 | [agent-memory](../agent-memory) | Persistent file-based memory for workflow subagents. No hooks. |
-| [env-protect](../env-protect) | Denies `env`, `printenv`, `export -p`, and reads of `.env` files. |
+| [env-protect](../env-protect) | Denies `env`, `printenv`, `export -p`, reads of `.env` files, and `op` secret reads printed to the terminal. |
 
 This leftover plugin ships `/agent-conductor-discontinued`. It does not auto-invoke. Run it when you want an agent to detect leftover shim files and ask before cleaning them up.
 
