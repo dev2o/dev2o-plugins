@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Cursor plugins for people who run more than one agent at a time",
-    "version": "0.1.29"
+    "version": "0.1.30"
   },
   "plugins": [
     {

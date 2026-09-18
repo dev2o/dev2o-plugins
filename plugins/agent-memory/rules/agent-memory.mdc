@@ -8,8 +8,12 @@ alwaysApply: true
 ## For Subagents (Consumers)
 - If your prompt contains a line matching `Memory: <path>`, read that file using the `Read` tool before beginning work.
 - Obey the rules defined in that file's protocol header.
-- Before completing your task, record any newly discovered user preferences, feedback, project facts, or references into the memory file.
-- Update or remove stale entries if current workspace evidence contradicts them.
+- `MEMORY.md` is an index, not a memory file — NEVER write memory content directly into `MEMORY.md`.
+- Save memories using the two-step process:
+  1. Write each memory to its own topic file (`.cursor/agent-memory/<subagent_type>/<type>_<topic>.md`) with YAML frontmatter (`name`, `description`, `type`) and structured body (for feedback/project: rule/fact, **Why:**, **How to apply:**).
+  2. Add an index link (`- [Title](filename.md) — Description`) to `MEMORY.md` under the matching section (`## User`, `## Feedback`, `## Project`, `## Reference`).
+- Before completing your task, record any newly discovered user preferences, feedback, project facts, or references into topic files and update the index. First check existing memory files to update rather than creating duplicates.
+- Update or remove stale memory files and their index entries if current workspace evidence contradicts them.
 - If your prompt does NOT contain a `Memory:` line, you have no memory store; do not search for or touch memory files.
 
 ## For Orchestrators (Spawners)

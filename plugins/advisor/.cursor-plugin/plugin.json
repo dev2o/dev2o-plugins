@@ -1,7 +1,7 @@
 {
   "name": "advisor",
   "displayName": "Advisor",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "description": "Strategic second opinions using native Cursor transcripts. Pinned models, no hooks.",
   "skills": "./skills/",
   "agents": "./agents/",
