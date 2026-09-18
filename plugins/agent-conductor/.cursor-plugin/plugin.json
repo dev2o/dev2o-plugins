@@ -1,7 +1,7 @@
 {
   "name": "agent-conductor",
   "displayName": "Agent Conductor",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "description": "Discontinued. Run /agent-conductor-discontinued to clean leftover shim files. Use advisor, agent-memory, and env-protect instead.",
   "skills": "./skills/",
   "license": "MIT",
